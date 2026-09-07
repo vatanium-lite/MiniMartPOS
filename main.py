@@ -543,7 +543,7 @@ class MoonMartPOS(QMainWindow):
 
         QMessageBox.information(
             self, 
-            "Today's Sales Summary", 
+            "Business-Day Sales Summary (7 AM–2 AM)",
             f"Total Completed Transactions: {tx_count}\nTotal Daily Revenue: {revenue} KHR | ${revenue_usd:.2f}"
         )
 

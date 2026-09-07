@@ -1,6 +1,6 @@
-.schema batch_inventory;
-.schema products;
+.fullschema
 
+SELECT * FROM sales_transactions;
 
 -- Fix 'CURRENT_TIMESTAMP' text issue
 /*.mode csv

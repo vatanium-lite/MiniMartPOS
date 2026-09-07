@@ -1,10 +1,10 @@
 # Printer Handler
 
-from escpos.printer import Usb, Win32Raw
+from escpos.printer import Win32Raw
 
 def print_receipt(transaction_id: int, cart_items: list, total: int, total_usd: float, payment_method: str):
     try:
-        PRINTER_NAME = "HPRT HM-A200U"  # Replace with the exact Windows printer name
+        PRINTER_NAME = "HPRT HM-A200U(ESC)"  # Replace with the exact Windows printer name
         printer = Win32Raw(printer_name=PRINTER_NAME, profile="TM-T88IV")
         
         printer.set(align="center", bold=True)
@@ -38,6 +38,7 @@ def print_receipt(transaction_id: int, cart_items: list, total: int, total_usd: 
         printer.text(f"TOTAL: ${total_usd:.2f}\n\n")
         printer.set(align="center", bold=False)
         printer.text("Thank you for shopping!\n")
-        printer.cut()
+        printer.text("\n\n\n")
+        printer.close()  # Ends the Windows RAW job so the spooler can send it.
     except Exception as e:
-        print(f"[Printer Notice] Printing simulation for Receipt #{transaction_id}: {total} KHR")
+        print(f"[Printer Error] Receipt #{transaction_id} was not printed: {e}")

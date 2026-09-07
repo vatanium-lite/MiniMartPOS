@@ -302,17 +302,27 @@ def edit_product(barcode: str, category_id: int = UNCHANGED, name: str = UNCHANG
             conn.rollback()
 
 
-def get_daily_sales_report(): # Generates a daily sales report
+def get_daily_sales_report(): # Generates a 7 AM to 2 AM local-time business-day sales report
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
             """
+            WITH reporting_period AS (
+                SELECT datetime(
+                    CASE
+                        WHEN time('now', 'localtime') < '07:00:00'
+                            THEN date('now', 'localtime', '-1 day') || ' 07:00:00'
+                        ELSE date('now', 'localtime') || ' 07:00:00'
+                    END,
+                    'utc'
+                ) AS starts_at
+            )
             SELECT 
                 COUNT(transaction_id) as total_transactions,
                 COALESCE(SUM(total_amount), 0) as revenue,
                 COALESCE(SUM(total_amount_usd), 0.0) as revenue_usd
-            FROM sales_transactions 
-            WHERE DATE(created_at) = DATE('now', 'localtime')
+            FROM sales_transactions, reporting_period
+            WHERE created_at >= reporting_period.starts_at
+              AND created_at < datetime(reporting_period.starts_at, '+19 hours')
             """)
         return cursor.fetchone()
-

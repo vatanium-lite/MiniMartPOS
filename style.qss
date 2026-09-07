@@ -22,7 +22,7 @@ QLineEdit#main_barcode_input {
 
 
 QTableWidget {
-    font-size: 12px; 
+    font-size: 16px;
     border: 1px solid #171717;
     background-color: #f2f2f2;
     color: #171717;
