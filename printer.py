@@ -1,12 +1,11 @@
 # Printer Handler
 
-from escpos.printer import Usb
+from escpos.printer import Usb, Win32Raw
 
 def print_receipt(transaction_id: int, cart_items: list, total: int, total_usd: float, payment_method: str):
     try:
-        # Replace 0x04b8, 0x0e15 with your Vendor ID & Product ID (e.g., Epson / Xprinter)
-        # Printer will fallback to console output if no USB printer is connected.
-        printer = Usb(0x04b8, 0x0e15, profile="TM-T88IV")
+        PRINTER_NAME = "HPRT HM-A200U"  # Replace with the exact Windows printer name
+        printer = Win32Raw(printer_name=PRINTER_NAME, profile="TM-T88IV")
         
         printer.set(align="center", bold=True)
         printer.text("MOON MART\n")

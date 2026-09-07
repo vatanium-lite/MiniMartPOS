@@ -1,6 +1,6 @@
 QMainWindow {
     background-color: #f2f2f2;
-    font-family: Arial, sans-serif;
+    font-family: "Khmer UI", Arial, sans-serif;
 }
 
 QLineEdit {
