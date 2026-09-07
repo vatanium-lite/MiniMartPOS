@@ -1,0 +1,96 @@
+QMainWindow {
+    background-color: #f2f2f2;
+    font-family: Arial, sans-serif;
+}
+
+QLineEdit {
+    font-size: 18px;
+    padding: 10px;
+    background-color: #f2f2f2;
+    border: 1px solid #171717;
+    color: black;
+    
+    min-height: 20px;
+    max-height: 20px;
+}
+
+QLineEdit#main_barcode_input {
+    min-height: 30px;
+    max-height: 30px;
+    padding: 10px;
+}
+
+
+QTableWidget {
+    font-size: 12px; 
+    border: 1px solid #171717;
+    background-color: #f2f2f2;
+    color: #171717;
+}
+
+QLabel#total_label {
+    font-size: 25px; 
+    font-weight: bold; 
+    color: #2C3E50;
+    margin-top: 10px;
+    margin-bottom: 20px;
+
+}
+
+QHeaderView {
+    background-color: transparent;
+}
+
+QHeaderView::section {
+    background-color: #cacaca;
+    color: black;
+    font-weight: bold;
+    border-top: none;
+    border-left: none;
+    border-right: 1px solid #171717;
+    border-bottom: 1px solid #171717;
+}
+
+QHeaderView::section:vertical {
+    background-color: #cacaca;
+    color: black;
+    font-weight: bold;
+    text-align: center;
+
+    border: 0px solid transparent; 
+    border-right: 1px solid #171717;
+    border-bottom: 1px solid #171717;
+}
+
+QHeaderView::section:last {
+    border-right: none;
+}
+
+QTableWidget QTableCornerButton::section {
+    background-color: #cacaca;
+
+    border: 0px solid transparent; 
+    border-right: 1px solid #171717;
+    border-bottom: 1px solid #171717;
+}
+
+QPushButton#btn_cash {
+    background-color: #086934;
+    color: white;
+    font-size: 20px;
+    padding: 15px;
+}
+
+QPushButton#btn_qr {
+    background-color: #991220;
+    color: white;
+    font-size: 20px;
+    padding: 15px;
+}
+
+QPushButton#btn_report {
+    background-color: #9B59B6;
+    color: white;
+    font-size: 16px;
+    padding: 10px;
+}
