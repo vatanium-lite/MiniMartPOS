@@ -253,7 +253,7 @@ class MoonMartPOS(QMainWindow):
                     f"TOTAL:\n\n{total} KHR\n$ {total_usd:.2f}"
                 )
 
-                return         
+            return         
         except (ValueError):
             QMessageBox.warning(
                 self,

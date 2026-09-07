@@ -62,7 +62,7 @@ QHeaderView::section:vertical {
     border-bottom: 1px solid #171717;
 }
 
-QHeaderView::section:last {
+QHeaderView::section:horizontal:last {
     border-right: none;
 }
 
