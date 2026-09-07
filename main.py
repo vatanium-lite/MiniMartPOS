@@ -54,9 +54,11 @@ class MoonMartPOS(QMainWindow):
         left_panel.addWidget(self.barcode_input)
 
         # Cart Table
-        self.cart_table = QTableWidget(0, 5) # Creates a table widget with 0 rows and 5 columns
-        self.cart_table.setHorizontalHeaderLabels(["Product Name", "Price", "Qty", "Line Total", "Line Total USD"])
+        self.cart_table = QTableWidget(0, 6) # Creates a table widget with 0 rows and 5 columns
+        self.cart_table.setHorizontalHeaderLabels(["Product Name", "Price", "Qty", "Line Total", "Line Total USD", ""])
         self.cart_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch) # Sets the first column to stretch and fill available space
+        self.cart_table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed) # Makes last column small
+        self.cart_table.setColumnWidth(5, 30)
         self.cart_table.cellChanged.connect(self.handle_cell_changed) # Connects the signal (when a cell is changed) to the handle_cell_changed method
         left_panel.addWidget(self.cart_table)
 
@@ -161,6 +163,16 @@ class MoonMartPOS(QMainWindow):
             self.cart_table.setItem(row_idx, 3, QTableWidgetItem(f"{item['line_total']} KHR"))
             self.cart_table.setItem(row_idx, 4, QTableWidgetItem(f"${item['line_total_usd']:.2f}"))
 
+            btn_remove = QPushButton("✕")
+            btn_remove.setFixedSize(40, 30)
+            btn_remove.setObjectName("btn_remove")
+
+            btn_remove.clicked.connect(
+                lambda checked, row=row_idx: self.remove_cart_item(row) # clicked emits checked(boolean) argument, we use checked to catch that
+            )                                                           # this can be simplified to lambda: self.remove_cart_item(row_idx)
+
+            self.cart_table.setCellWidget(row_idx, 5, btn_remove)
+
             self.cart_table.verticalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
 
             for col_idx in range(1, 5):
@@ -170,7 +182,7 @@ class MoonMartPOS(QMainWindow):
             total_usd += item['line_total_usd']
 
         for row_idx in range(self.cart_table.rowCount()): # Makes quantity editable while keeping other columns read-only
-            for col_idx in range(self.cart_table.columnCount()):
+            for col_idx in range(self.cart_table.columnCount() - 1):
                 if col_idx == 2:
                     self.cart_table.item(row_idx, col_idx).setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEditable)
                 else:
@@ -179,6 +191,11 @@ class MoonMartPOS(QMainWindow):
         self.total_label.setText(f"TOTAL:\n\n{total} KHR\n$ {total_usd:.2f}")
 
         self.cart_table.blockSignals(False)  # Unblocks signals to resume operations
+
+    def remove_cart_item(self, row_idx):
+        if 0 <= row_idx < len(self.cart):
+            self.cart.pop(row_idx)
+            self.update_cart_ui()   
 
     def process_payment(self, payment_method: str):
         if not self.cart:

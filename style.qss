@@ -94,3 +94,7 @@ QPushButton#btn_report {
     font-size: 16px;
     padding: 10px;
 }
+
+QPushButton#btn_remove {
+    color: #991220;
+}
