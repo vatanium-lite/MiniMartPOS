@@ -136,15 +136,19 @@ class MoonMartPOS(QMainWindow):
                 item['line_total_usd'] = item['quantity'] * product['retail_price_usd']
                 self.update_cart_ui()
                 return
+            
+        if product['retail_price']: # Product without unit price will not be added
+            self.cart.append({ # Initialises if product is not already in the cart
+                'product_id': product['product_id'],
+                'name': product['name'],
+                'unit_price': product['retail_price'],
+                'quantity': 1,
+                'line_total': product['retail_price'],
+                'line_total_usd': product['retail_price_usd']
+            })
+        else:
+            QMessageBox.warning(self, "Invalid Price", f"No unit price for barcode: {barcode}")
 
-        self.cart.append({ # Initialises if product is not already in the cart
-            'product_id': product['product_id'],
-            'name': product['name'],
-            'unit_price': product['retail_price'],
-            'quantity': 1,
-            'line_total': product['retail_price'],
-            'line_total_usd': product['retail_price_usd']
-        })
         self.update_cart_ui()
 
     def update_cart_ui(self):
