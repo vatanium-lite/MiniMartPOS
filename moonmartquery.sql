@@ -1,6 +1,4 @@
-.fullschema
-
-SELECT * FROM sales_transactions;
+.schema products
 
 -- Fix 'CURRENT_TIMESTAMP' text issue
 /*.mode csv

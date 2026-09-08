@@ -1,5 +1,6 @@
 # Database Setup & Helper Module
 import sqlite3
+from contextlib import closing
 from datetime import date, datetime
 
 DB_FILE = "moonmart.db"
@@ -23,7 +24,7 @@ def clean_up_db(): # Remove batches with zero quantity
 def init_db():
     
     #initialise application's db schemas
-    with get_db() as conn:
+    with closing(get_db()) as conn, conn:
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS categories (
                 category_id INT PRIMARY KEY, 
@@ -38,7 +39,7 @@ def init_db():
                 retail_price INT, 
                 retail_price_usd DECIMAL(6, 2), 
                 reorder_level INT, 
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+                created_at TIMESTAMP DEFAULT (datetime('now', '+7 hours')),
 
                 CONSTRAINT fk_category_id 
                     FOREIGN KEY (category_id) 
@@ -48,7 +49,7 @@ def init_db():
                 batch_id INT PRIMARY KEY, 
                 product_id INT,  --fk
                 quantity INT NOT NULL, 
-                received_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+                received_date TIMESTAMP DEFAULT (datetime('now', '+7 hours')),
                 expiration_date DATE,
 
                 CONSTRAINT fk_product_id 
@@ -61,7 +62,7 @@ def init_db():
                 total_amount INT NOT NULL, 
                 total_amount_usd DECIMAL(6, 2) NOT NULL, 
                 payment_method TEXT NOT NULL CHECK (payment_method IN ('cash', 'KHQR')), 
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT (datetime('now', '+7 hours'))
             );
             CREATE TABLE IF NOT EXISTS pos_item_sales (
                 sale_item_id INTEGER PRIMARY KEY, 
@@ -74,7 +75,7 @@ def init_db():
 
                 CONSTRAINT fk_transaction_id 
                     FOREIGN KEY (transaction_id) 
-                    REFERENCES sales_transactions(transaction_id) 
+                    REFERENCES sales_transactions(transaction_id),
 
                 CONSTRAINT fk_product_id 
                     FOREIGN KEY (product_id) 
@@ -92,7 +93,7 @@ def init_db():
                 supplier_id INT,  --fk
                 status TEXT NOT NULL CHECK (status IN ('pending', 'received', 'cancelled')), 
                 total_cost INT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMP DEFAULT (datetime('now', '+7 hours')),
 
                 CONSTRAINT fk_supplier_id 
                     FOREIGN KEY (supplier_id) 
@@ -116,6 +117,37 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode);
             CREATE INDEX IF NOT EXISTS idx_sales_created ON sales_transactions(created_at);
         """)
+
+        # DB Browser's CSV importer may bind a default expression as literal text.
+        # Persist these triggers so imports through other database connections are
+        # protected too. Only missing values and known default text are replaced.
+        timestamp_columns = (
+            ("products", "created_at"),
+            ("batch_inventory", "received_date"),
+            ("sales_transactions", "created_at"),
+            ("purchase_orders", "created_at"),
+        )
+        for table, column in timestamp_columns:
+            for operation, event in (("insert", "INSERT"), ("update", f"UPDATE OF {column}")):
+                # Identifiers below come only from the fixed list above.
+                conn.execute(f"""
+                    CREATE TRIGGER IF NOT EXISTS {table}_{column}_bangkok_{operation}
+                    AFTER {event} ON {table}
+                    WHEN NEW.{column} IS NULL
+                      OR trim(NEW.{column}, ' ' || char(9) || char(10) || char(13)) = ''
+                      OR lower(replace(trim(NEW.{column}), ' ', '')) IN (
+                          '(datetime(''now'',''+7hours''))',
+                          'datetime(''now'',''+7hours'')',
+                          'current_timestamp',
+                          '(current_timestamp)'
+                      )
+                    BEGIN
+                        UPDATE {table}
+                        SET {column} = datetime('now', '+7 hours')
+                        WHERE rowid = NEW.rowid;
+                    END;
+                """)
+
 
 def get_product_by_barcode(barcode: str):
     with get_db() as conn:
@@ -302,7 +334,7 @@ def edit_product(barcode: str, category_id: int = UNCHANGED, name: str = UNCHANG
             conn.rollback()
 
 
-def get_daily_sales_report(): # Generates a 7 AM to 2 AM local-time business-day sales report
+def get_daily_sales_report(): # Generates a 7 AM to 2 AM Bangkok-time business-day sales report
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
@@ -310,11 +342,10 @@ def get_daily_sales_report(): # Generates a 7 AM to 2 AM local-time business-day
             WITH reporting_period AS (
                 SELECT datetime(
                     CASE
-                        WHEN time('now', 'localtime') < '07:00:00'
-                            THEN date('now', 'localtime', '-1 day') || ' 07:00:00'
-                        ELSE date('now', 'localtime') || ' 07:00:00'
-                    END,
-                    'utc'
+                        WHEN time('now', '+7 hours') < '07:00:00'
+                            THEN date('now', '+7 hours', '-1 day') || ' 07:00:00'
+                        ELSE date('now', '+7 hours') || ' 07:00:00'
+                    END
                 ) AS starts_at
             )
             SELECT 
