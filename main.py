@@ -204,7 +204,12 @@ class MoonMartPOS(QMainWindow):
 
         total = sum(item['line_total'] for item in self.cart)
         total_usd = sum(item['line_total_usd'] for item in self.cart)
-        transaction_id = db.process_checkout(self.cart, payment_method)
+
+        try:
+            transaction_id = db.process_checkout(self.cart, payment_method)
+        except ValueError as error:
+            QMessageBox.warning(self, "Checkout Failed", str(error))
+            return
 
         # Trigger ESC/POS Thermal Print
         printer.print_receipt(transaction_id, self.cart, total, total_usd, payment_method)
@@ -218,6 +223,9 @@ class MoonMartPOS(QMainWindow):
         if column_idx != 2:  # Only allow changes in the quantity column
             return
 
+        if not 0 <= row_idx < len(self.cart):
+            return
+
         quantity_item = self.cart_table.item(row_idx, 2) # Retrieves the changed quantity cell item at the specified row and column
 
         try:
@@ -229,29 +237,27 @@ class MoonMartPOS(QMainWindow):
             if quantity < 1:
                 raise ValueError
             
-            product_name = self.cart_table.item(row_idx, 0).text() # Retrieves the product name from the first column of the changed row
+            # Table rows follow the same order as the cart (sorting is disabled).
+            item = self.cart[row_idx]
+            item['quantity'] = quantity
+            item['line_total'] = quantity * item['unit_price']
+            item['line_total_usd'] = round(item['line_total'] / 4000, 2)
 
-            for item in self.cart:
-                if item['name'] == product_name:
-                    item['quantity'] = quantity
-                    item['line_total'] = quantity * item['unit_price']
-                    item['line_total_usd'] = round(item['line_total'] / 4000, 2)
+            # Updates the affected cells
+            self.cart_table.item(row_idx, 3).setText(
+                f"{item['line_total']} KHR"
+            )
+            self.cart_table.item(row_idx, 4).setText(
+                f"${item['line_total_usd']:.2f}"
+            )
 
-                    # Updates the affected cells
-                    self.cart_table.item(row_idx, 3).setText(
-                        f"{item['line_total']} KHR"
-                    )
-                    self.cart_table.item(row_idx, 4).setText(
-                        f"${item['line_total_usd']:.2f}"
-                    )
+            # Recalculate totals
+            total = sum(x['line_total'] for x in self.cart)
+            total_usd = sum(x['line_total_usd'] for x in self.cart)
 
-                    # Recalculate totals
-                    total = sum(x['line_total'] for x in self.cart)
-                    total_usd = sum(x['line_total_usd'] for x in self.cart)
-
-                    self.total_label.setText(
-                    f"TOTAL:\n\n{total} KHR\n$ {total_usd:.2f}"
-                )
+            self.total_label.setText(
+                f"TOTAL:\n\n{total} KHR\n$ {total_usd:.2f}"
+            )
 
             return         
         except (ValueError):

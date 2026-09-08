@@ -23,15 +23,15 @@ def clean_up_db(): # Remove batches with zero quantity
 
 def init_db():
     
-    #initialise application's db schemas
+    # SQLite generates IDs automatically only for INTEGER PRIMARY KEY, not INT.
     with closing(get_db()) as conn, conn:
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS categories (
-                category_id INT PRIMARY KEY, 
+                category_id INTEGER PRIMARY KEY,
                 name VARCHAR(50) NOT NULL, 
                 description TEXT);
             CREATE TABLE IF NOT EXISTS products (
-                product_id INT PRIMARY KEY, 
+                product_id INTEGER PRIMARY KEY,
                 barcode VARCHAR(50) UNIQUE, 
                 category_id INT, 
                 name VARCHAR(100), 
@@ -46,7 +46,7 @@ def init_db():
                     REFERENCES categories(category_id)
             );
             CREATE TABLE IF NOT EXISTS batch_inventory (
-                batch_id INT PRIMARY KEY, 
+                batch_id INTEGER PRIMARY KEY,
                 product_id INT,  --fk
                 quantity INT NOT NULL, 
                 received_date TIMESTAMP DEFAULT (datetime('now', '+7 hours')),
@@ -82,14 +82,14 @@ def init_db():
                     REFERENCES products(product_id)
             );
             CREATE TABLE IF NOT EXISTS suppliers (
-                supplier_id INT PRIMARY KEY, 
+                supplier_id INTEGER PRIMARY KEY,
                 company_name VARCHAR(100), 
                 contact_person VARCHAR(100), 
                 phone VARCHAR(20), 
                 email VARCHAR(100)
             );
             CREATE TABLE IF NOT EXISTS purchase_orders (
-                purchase_order_id INT PRIMARY KEY, 
+                purchase_order_id INTEGER PRIMARY KEY,
                 supplier_id INT,  --fk
                 status TEXT NOT NULL CHECK (status IN ('pending', 'received', 'cancelled')), 
                 total_cost INT,
@@ -100,7 +100,7 @@ def init_db():
                     REFERENCES suppliers(supplier_id)
             );
             CREATE TABLE IF NOT EXISTS po_items (
-                po_item_id INT PRIMARY KEY, 
+                po_item_id INTEGER PRIMARY KEY,
                 purchase_order_id INT,  --fk
                 product_id INT,  --fk
                 quantity_ordered INT NOT NULL, 
@@ -207,7 +207,25 @@ def process_checkout(cart_items: list, payment_method: str) -> int: # cart_items
                 requested_quantity -= deduct_quantity
 
             if requested_quantity > 0:
-                raise ValueError(f"Insufficient stock for product_id {item['product_id']}") # Raises an error if the requested quantity exceeds available stock
+                cursor.execute(
+                    "SELECT name, barcode FROM products WHERE product_id = ?",
+                    (item['product_id'],)
+                )
+                product = cursor.fetchone()
+                product_name = product['name'] or f"Product #{item['product_id']}"
+                available_quantity = sum(batch['quantity'] for batch in batches)
+                action = (
+                    f"Reduce this product's cart quantity to {available_quantity} or fewer."
+                    if available_quantity > 0
+                    else "Remove this product from the cart or replenish its stock."
+                )
+                raise ValueError(
+                    f"Insufficient stock: {product_name}\n"
+                    f"Barcode: {product['barcode']}\n"
+                    f"Requested: {item['quantity']}\n"
+                    f"Available: {available_quantity}\n\n"
+                    f"{action}"
+                )
 
         conn.commit()
 

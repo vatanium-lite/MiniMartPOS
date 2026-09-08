@@ -7,3 +7,7 @@ venv/
 *.db
 *.db-journal
 *.sql
+# Local test report and SQLite temporary files
+feature-test-report.md
+*.db-shm
+*.db-wal
