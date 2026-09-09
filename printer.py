@@ -3,6 +3,7 @@
 from escpos.printer import Win32Raw
 
 def print_receipt(transaction_id: int, cart_items: list, total: int, total_usd: float, payment_method: str):
+    printer = None
     try:
         PRINTER_NAME = "HPRT HM-A200U(ESC)"  # Replace with the exact Windows printer name
         printer = Win32Raw(printer_name=PRINTER_NAME, profile="TM-T88IV")
@@ -39,6 +40,11 @@ def print_receipt(transaction_id: int, cart_items: list, total: int, total_usd: 
         printer.set(align="center", bold=False)
         printer.text("Thank you for shopping!\n")
         printer.text("\n\n\n")
-        printer.close()  # Ends the Windows RAW job so the spooler can send it.
     except Exception as e:
         print(f"[Printer Error] Receipt #{transaction_id} was not printed: {e}")
+    finally:
+        if printer is not None:
+            try:
+                printer.close()  # End the Windows RAW job even after a receipt error.
+            except Exception as e:
+                print(f"[Printer Error] Could not close print job for receipt #{transaction_id}: {e}")
