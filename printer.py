@@ -2,13 +2,26 @@
 
 from escpos.printer import Win32Raw
 from math import ceil
+from textwrap import wrap
 from PIL import Image
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QFontDatabase, QGuiApplication, QImage, QPainter, QTextDocument, QTextOption
 
 
+# HM-A200U: 48 mm printable width at 8 dots/mm (58 mm paper).
+# https://www.hprt.com/Product/Portable-Thermal-Receipt-Printer-HM-A200U.html
 RECEIPT_WIDTH_DOTS = 384
+RECEIPT_COLUMNS = 32  # Normal-size Font A; do not use double-width text.
 KHMER_FONT_SIZE = 26  # Pixels at the printer's native resolution.
+
+
+def wrap_receipt_text(text: str) -> str:
+    """Fit text to the receipt, preserving paragraphs and splitting long words."""
+    return '\n'.join(
+        line
+        for paragraph in text.split('\n')
+        for line in (wrap(paragraph, width=RECEIPT_COLUMNS, break_on_hyphens=False) or [''])
+    ) + '\n'
 
 
 def render_khmer_name(name: str) -> Image.Image:
@@ -62,14 +75,14 @@ def print_receipt(transaction_id: int, cart_items: list, total: int, total_usd: 
         PRINTER_NAME = "HPRT HM-A200U(ESC)"  # Replace with the exact Windows printer name
         printer = Win32Raw(printer_name=PRINTER_NAME, profile="TM-T88IV")
         
-        printer.set(align="center", bold=True)
+        printer.set(align="center", bold=True, font="a", normal_textsize=True)
         printer.text("MOON MART\n")
         printer.text("17Eo, St 108\n")
-        printer.text("--------------------------------\n")
+        printer.text('-' * RECEIPT_COLUMNS + '\n')
         
         printer.set(align="left", bold=False)
-        printer.text(f"Receipt #: {transaction_id}\n")
-        printer.text(f"--------------------------------\n")
+        printer.text(wrap_receipt_text(f"Receipt #: {transaction_id}"))
+        printer.text('-' * RECEIPT_COLUMNS + '\n')
 
 
         """ cart_items is a list of dictionaries containing 
@@ -84,20 +97,18 @@ def print_receipt(transaction_id: int, cart_items: list, total: int, total_usd: 
             if name_image is not None:
                 # Send pixels instead of passing Khmer through an ESC/POS code page.
                 printer.image(name_image, impl="bitImageRaster", center=False)
-                printer.text(
-                    f"Qty: {item['quantity']}  {item['line_total']} KHR  ${item['line_total_usd']:.2f}\n"
-                )
-                continue
-            name = item['name'][:18].ljust(18)
-            qty = str(item['quantity']).rjust(3)
-            price = f"{item['line_total']} KHR".rjust(10)
-            price_usd = f"${item['line_total_usd']:.2f}".rjust(10)
-            printer.text(f"{name} {qty} {price} {price_usd}\n")
+            else:
+                printer.text(wrap_receipt_text(item['name']))
+            # Keep the full name above the amounts instead of squeezing four columns.
+            printer.text(wrap_receipt_text(
+                f"Qty: {item['quantity']}  {item['line_total']} KHR  ${item['line_total_usd']:.2f}"
+            ))
             
-        printer.text("--------------------------------\n")
+        printer.text('-' * RECEIPT_COLUMNS + '\n')
         printer.set(align="right", bold=True)
-        printer.text(f"TOTAL: {total} KHR\n")
-        printer.text(f"TOTAL: ${total_usd:.2f}\n\n")
+        printer.text(wrap_receipt_text(f"TOTAL: {total} KHR"))
+        printer.text(wrap_receipt_text(f"TOTAL: ${total_usd:.2f}"))
+        printer.text('\n')
         printer.set(align="center", bold=False)
         printer.text("Thank you for shopping!\n")
         printer.text("\n\n\n")
