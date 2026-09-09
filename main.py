@@ -265,6 +265,16 @@ class MoonMartPOS(QMainWindow):
 
             return         
         except (ValueError):
+            # Restore the displayed quantity without triggering this handler again.
+            signals_were_blocked = self.cart_table.blockSignals(True) # Sets blockSignals to True and returns previous state (False)
+            try:
+                previous_quantity = str(self.cart[row_idx]['quantity'])
+                if quantity_item is not None:
+                    quantity_item.setText(previous_quantity)
+                else:
+                    self.cart_table.setItem(row_idx, 2, QTableWidgetItem(previous_quantity))
+            finally:
+                self.cart_table.blockSignals(signals_were_blocked) # Re-activates signals
             QMessageBox.warning(
                 self,
                 "Invalid Quantity",
