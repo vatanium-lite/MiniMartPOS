@@ -130,14 +130,18 @@ class MoonMartPOS(QMainWindow):
         # Updates cart memory
         for item in self.cart:
             if item['product_id'] == product['product_id']:
-                item['unit_price'] = product['retail_price']  # Fills the unit price in cart_table so the handle_cell_changed method can recalculate
-                item['quantity'] += 1
-                item['line_total'] = item['quantity'] * product['retail_price']
-                item['line_total_usd'] = item['quantity'] * product['retail_price_usd']
-                self.update_cart_ui()
-                return
+                if product['retail_price'] and product['retail_price_usd']:
+                    item['unit_price'] = product['retail_price']  # Fills the unit price in cart_table so the handle_cell_changed method can recalculate
+                    item['quantity'] += 1
+                    item['line_total'] = item['quantity'] * product['retail_price']
+                    item['line_total_usd'] = item['quantity'] * product['retail_price_usd']
+                    self.update_cart_ui()
+                    return
+                else:
+                    QMessageBox.warning(self, "Invalid Price", f"No unit price for barcode: {barcode}")
+                    return
             
-        if product['retail_price']: # Product without unit price will not be added
+        if product['retail_price'] and product['retail_price_usd']: # Product without unit price will not be added
             self.cart.append({ # Initialises if product is not already in the cart
                 'product_id': product['product_id'],
                 'name': product['name'],
