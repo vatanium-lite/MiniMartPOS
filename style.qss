@@ -89,12 +89,28 @@ QPushButton#btn_qr {
 }
 
 QPushButton#btn_report {
-    background-color: #9B59B6;
-    color: white;
-    font-size: 16px;
-    padding: 10px;
+    background-color: transparent;
+    color: #41004e;
+    font-size: 14px;
+    padding: 5px;
+    text-decoration: underline;
 }
 
 QPushButton#btn_remove {
     color: #991220;
+}
+
+/* Right-panel buttons: content width plus horizontal padding and native borders.
+   Change both width values together to resize these buttons. */
+QPushButton#btn_cash,
+QPushButton#btn_qr,
+QPushButton#btn_report,
+QPushButton#btn_add_stock,
+QPushButton#btn_delete_stock,
+QPushButton#btn_edit_product {
+    min-width: 200px;
+    max-width: 200px;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-radius: 0;
 }
