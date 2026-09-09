@@ -132,6 +132,7 @@ class MoonMartPOS(QMainWindow):
             if item['product_id'] == product['product_id']:
                 if product['retail_price'] and product['retail_price_usd']:
                     item['unit_price'] = product['retail_price']  # Fills the unit price in cart_table so the handle_cell_changed method can recalculate
+                    item['unit_price_usd'] = product['retail_price_usd']
                     item['quantity'] += 1
                     item['line_total'] = item['quantity'] * product['retail_price']
                     item['line_total_usd'] = item['quantity'] * product['retail_price_usd']
@@ -146,6 +147,7 @@ class MoonMartPOS(QMainWindow):
                 'product_id': product['product_id'],
                 'name': product['name'],
                 'unit_price': product['retail_price'],
+                'unit_price_usd': product['retail_price_usd'],
                 'quantity': 1,
                 'line_total': product['retail_price'],
                 'line_total_usd': product['retail_price_usd']
@@ -249,7 +251,7 @@ class MoonMartPOS(QMainWindow):
             item = self.cart[row_idx]
             item['quantity'] = quantity
             item['line_total'] = quantity * item['unit_price']
-            item['line_total_usd'] = round(item['line_total'] / 4000, 2)
+            item['line_total_usd'] = round(quantity * item['unit_price_usd'], 2)
 
             # Updates the affected cells
             self.cart_table.item(row_idx, 3).setText(
