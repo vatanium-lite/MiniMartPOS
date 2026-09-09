@@ -350,6 +350,7 @@ def edit_product(barcode: str, category_id: int = UNCHANGED, name: str = UNCHANG
         except sqlite3.Error as e:
             print(f"Database error: {e}")
             conn.rollback()
+            raise # Re-raise the error back to whatever method calls this method
 
 
 def get_daily_sales_report(): # Generates a 7 AM to 2 AM Bangkok-time business-day sales report
