@@ -64,7 +64,7 @@ def render_khmer_name(name: str) -> Image.Image:
 def contains_khmer(text: str) -> bool:
     return any('\u1780' <= char <= '\u17ff' or '\u19e0' <= char <= '\u19ff' for char in text)
 
-def print_receipt(transaction_id: int, cart_items: list, total: int, total_usd: float, payment_method: str):
+def print_receipt(transaction_id: int, cart_items: list, total: int, total_usd: float, payment_method: str, discount_amount: int = 0):
     printer = None
     try:
         # Render first: missing fonts must not leave a partly written print job.
@@ -106,6 +106,14 @@ def print_receipt(transaction_id: int, cart_items: list, total: int, total_usd: 
             
         printer.text('-' * RECEIPT_COLUMNS + '\n')
         printer.set(align="right", bold=True)
+        if discount_amount:
+            subtotal = sum(item['line_total'] for item in cart_items)
+            subtotal_usd = sum(item['line_total_usd'] for item in cart_items)
+            printer.text(wrap_receipt_text(f"Subtotal: {subtotal} KHR"))
+            printer.text(wrap_receipt_text(f"Subtotal: ${subtotal_usd:.2f}"))
+            printer.text(wrap_receipt_text(f"Discount: -{discount_amount} KHR"))
+            discount_usd = round(max(0, subtotal_usd - total_usd), 2)
+            printer.text(wrap_receipt_text(f"Discount: -${discount_usd:.2f}"))
         printer.text(wrap_receipt_text(f"TOTAL: {total} KHR"))
         printer.text(wrap_receipt_text(f"TOTAL: ${total_usd:.2f}"))
         printer.text('\n')

@@ -20,6 +20,18 @@ QLineEdit#main_barcode_input {
     padding: 10px;
 }
 
+QLineEdit#discount_input {
+    min-width: 200px;
+    max-width: 200px;
+    font-size: 16px;
+}
+
+QLabel#discount_error {
+    color: #991220;
+    font-size: 12px;
+    max-width: 222px;
+}
+
 
 QTableWidget {
     font-size: 16px;

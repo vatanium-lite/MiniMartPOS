@@ -6,7 +6,8 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QLineEdit, QTableWidget, QTableWidgetItem, 
                              QPushButton, QLabel, QMessageBox, QHeaderView, QDateEdit, QDialog,
                              QFormLayout, QDialogButtonBox, QAbstractItemView)
-from PyQt6.QtCore import Qt, QDate
+from PyQt6.QtCore import Qt, QDate, QRegularExpression
+from PyQt6.QtGui import QRegularExpressionValidator
 
 import db
 import printer
@@ -68,6 +69,20 @@ class MoonMartPOS(QMainWindow):
         self.total_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         right_panel.addWidget(self.total_label)
 
+        self.discount_input = QLineEdit()
+        self.discount_input.setObjectName("discount_input")
+        self.discount_input.setPlaceholderText("Discount (KHR)")
+        self.discount_input.setAccessibleName("Whole-sale discount in KHR")
+        self.discount_input.setToolTip("Whole-sale discount in KHR; blank means 0. USD conversion: 4,000 KHR = $1.")
+        self.discount_input.setMaxLength(12)
+        self.discount_input.setValidator(QRegularExpressionValidator(QRegularExpression('[0-9]*'), self.discount_input))
+        right_panel.addWidget(self.discount_input)
+        self.discount_error = QLabel()
+        self.discount_error.setObjectName("discount_error")
+        self.discount_error.setWordWrap(True)
+        self.discount_error.hide()
+        right_panel.addWidget(self.discount_error)
+
         # Checkout Buttons
         btn_cash = QPushButton("Pay Cash")
         btn_cash.setObjectName("btn_cash")
@@ -78,6 +93,7 @@ class MoonMartPOS(QMainWindow):
         btn_qr.setObjectName("btn_qr")
         btn_qr.clicked.connect(lambda: self.process_payment("KHQR")) 
         right_panel.addWidget(btn_qr)
+        self.payment_buttons = (btn_cash, btn_qr)
 
         # Daily Sales Report Button
         btn_report = QPushButton("Daily Sales Summary")
@@ -114,6 +130,31 @@ class MoonMartPOS(QMainWindow):
         container = QWidget()
         container.setLayout(main_layout)
         self.setCentralWidget(container)
+        self.discount_input.textChanged.connect(self.update_totals)
+        self.update_totals()
+
+    def update_totals(self):
+        """Refresh the payable totals whenever the cart or whole-sale discount changes."""
+        try:
+            text = self.discount_input.text().strip()
+            if text and (not text.isascii() or not text.isdigit()):
+                raise ValueError("Discount must be a non-negative whole number in KHR.")
+            discount = int(text) if text else 0
+            total, total_usd = db.calculate_checkout_totals(self.cart, discount)
+        except ValueError as error:
+            self.total_label.setText("TOTAL:\n\nInvalid discount")
+            self.discount_error.setText(str(error))
+            self.discount_error.show()
+            for button in self.payment_buttons:
+                button.setEnabled(False)
+            return None
+
+        self.discount_error.clear()
+        self.discount_error.hide()
+        for button in self.payment_buttons:
+            button.setEnabled(True)
+        self.total_label.setText(f"TOTAL:\n\n{total} KHR\n$ {total_usd:.2f}")
+        return total, total_usd, discount
 
     def handle_barcode_scan(self):
         barcode = self.barcode_input.text().strip()
@@ -162,8 +203,6 @@ class MoonMartPOS(QMainWindow):
         self.cart_table.blockSignals(True)  # Temporarily blocks signals so setting items doesn't trigger cellChanged event
 
         self.cart_table.setRowCount(0)
-        total = 0
-        total_usd = 0.0
 
         for row_idx, item in enumerate(self.cart):
             self.cart_table.insertRow(row_idx) # Creates a blank row at position row_idx
@@ -188,9 +227,6 @@ class MoonMartPOS(QMainWindow):
             for col_idx in range(1, 5):
                 self.cart_table.item(row_idx, col_idx).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
-            total += item['line_total']
-            total_usd += item['line_total_usd']
-
         for row_idx in range(self.cart_table.rowCount()): # Makes quantity editable while keeping other columns read-only
             for col_idx in range(self.cart_table.columnCount() - 1):
                 if col_idx == 2:
@@ -198,7 +234,9 @@ class MoonMartPOS(QMainWindow):
                 else:
                     self.cart_table.item(row_idx, col_idx).setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
 
-        self.total_label.setText(f"TOTAL:\n\n{total} KHR\n$ {total_usd:.2f}")
+        if not self.cart:
+            self.discount_input.clear()
+        self.update_totals()
 
         self.cart_table.blockSignals(False)  # Unblocks signals to resume operations
 
@@ -212,17 +250,20 @@ class MoonMartPOS(QMainWindow):
             QMessageBox.warning(self, "Empty Cart", "Please scan items before checking out.")
             return
 
-        total = sum(item['line_total'] for item in self.cart)
-        total_usd = sum(item['line_total_usd'] for item in self.cart)
+        totals = self.update_totals()
+        if totals is None:
+            QMessageBox.warning(self, "Invalid Discount", self.discount_error.text())
+            return
+        total, total_usd, discount = totals
 
         try:
-            transaction_id = db.process_checkout(self.cart, payment_method)
+            transaction_id = db.process_checkout(self.cart, payment_method, discount_amount=discount)
         except ValueError as error:
             QMessageBox.warning(self, "Checkout Failed", str(error))
             return
 
         # Trigger ESC/POS Thermal Print
-        printer.print_receipt(transaction_id, self.cart, total, total_usd, payment_method)
+        printer.print_receipt(transaction_id, self.cart, total, total_usd, payment_method, discount_amount=discount)
 
         QMessageBox.information(self, "Success", f"Sale #{transaction_id} completed successfully!")
         self.cart.clear()
@@ -261,13 +302,7 @@ class MoonMartPOS(QMainWindow):
                 f"${item['line_total_usd']:.2f}"
             )
 
-            # Recalculate totals
-            total = sum(x['line_total'] for x in self.cart)
-            total_usd = sum(x['line_total_usd'] for x in self.cart)
-
-            self.total_label.setText(
-                f"TOTAL:\n\n{total} KHR\n$ {total_usd:.2f}"
-            )
+            self.update_totals()
 
             return         
         except (ValueError):
