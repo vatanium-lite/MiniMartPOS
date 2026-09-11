@@ -101,7 +101,7 @@ def print_receipt(transaction_id: int, cart_items: list, total: int, total_usd: 
                 printer.text(wrap_receipt_text(item['name']))
             # Keep the full name above the amounts instead of squeezing four columns.
             printer.text(wrap_receipt_text(
-                f"Qty: {item['quantity']}  {item['line_total']} KHR  ${item['line_total_usd']:.2f}"
+                f"Qty: {item['quantity']}  {item['line_total']} KHR  ${item['line_total_usd']:.3f}"
             ))
             
         printer.text('-' * RECEIPT_COLUMNS + '\n')
@@ -110,12 +110,12 @@ def print_receipt(transaction_id: int, cart_items: list, total: int, total_usd: 
             subtotal = sum(item['line_total'] for item in cart_items)
             subtotal_usd = sum(item['line_total_usd'] for item in cart_items)
             printer.text(wrap_receipt_text(f"Subtotal: {subtotal} KHR"))
-            printer.text(wrap_receipt_text(f"Subtotal: ${subtotal_usd:.2f}"))
+            printer.text(wrap_receipt_text(f"Subtotal: ${subtotal_usd:.3f}"))
             printer.text(wrap_receipt_text(f"Discount: -{discount_amount} KHR"))
-            discount_usd = round(max(0, subtotal_usd - total_usd), 2)
-            printer.text(wrap_receipt_text(f"Discount: -${discount_usd:.2f}"))
+            discount_usd = round(max(0, subtotal_usd - total_usd), 3)
+            printer.text(wrap_receipt_text(f"Discount: -${discount_usd:.3f}"))
         printer.text(wrap_receipt_text(f"TOTAL: {total} KHR"))
-        printer.text(wrap_receipt_text(f"TOTAL: ${total_usd:.2f}"))
+        printer.text(wrap_receipt_text(f"TOTAL: ${total_usd:.3f}"))
         printer.text('\n')
         printer.set(align="center", bold=False)
         printer.text("Thank you for shopping!\n")

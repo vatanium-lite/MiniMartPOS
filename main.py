@@ -64,7 +64,7 @@ class MoonMartPOS(QMainWindow):
         left_panel.addWidget(self.cart_table)
 
         # Totals Display
-        self.total_label = QLabel("TOTAL:\n\n0 KHR\n0.0 USD") # Displays text or image
+        self.total_label = QLabel("TOTAL:\n\n0 KHR\n$ 0.000") # Displays text or image
         self.total_label.setObjectName("total_label")
         self.total_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         right_panel.addWidget(self.total_label)
@@ -153,7 +153,7 @@ class MoonMartPOS(QMainWindow):
         self.discount_error.hide()
         for button in self.payment_buttons:
             button.setEnabled(True)
-        self.total_label.setText(f"TOTAL:\n\n{total} KHR\n$ {total_usd:.2f}")
+        self.total_label.setText(f"TOTAL:\n\n{total} KHR\n$ {total_usd:.3f}")
         return total, total_usd, discount
 
     def handle_barcode_scan(self):
@@ -176,7 +176,7 @@ class MoonMartPOS(QMainWindow):
                     item['unit_price_usd'] = product['retail_price_usd']
                     item['quantity'] += 1
                     item['line_total'] = item['quantity'] * product['retail_price']
-                    item['line_total_usd'] = item['quantity'] * product['retail_price_usd']
+                    item['line_total_usd'] = db.calculate_usd_line_total(item['quantity'], product['retail_price_usd'])
                     self.update_cart_ui()
                     return
                 else:
@@ -191,7 +191,7 @@ class MoonMartPOS(QMainWindow):
                 'unit_price_usd': product['retail_price_usd'],
                 'quantity': 1,
                 'line_total': product['retail_price'],
-                'line_total_usd': product['retail_price_usd']
+                'line_total_usd': db.calculate_usd_line_total(1, product['retail_price_usd'])
             })
         else:
             QMessageBox.warning(self, "Invalid Price", f"No unit price for barcode: {barcode}")
@@ -210,7 +210,7 @@ class MoonMartPOS(QMainWindow):
             self.cart_table.setItem(row_idx, 1, QTableWidgetItem(f"{item['unit_price']} KHR"))
             self.cart_table.setItem(row_idx, 2, QTableWidgetItem(str(item['quantity'])))
             self.cart_table.setItem(row_idx, 3, QTableWidgetItem(f"{item['line_total']} KHR"))
-            self.cart_table.setItem(row_idx, 4, QTableWidgetItem(f"${item['line_total_usd']:.2f}"))
+            self.cart_table.setItem(row_idx, 4, QTableWidgetItem(f"${item['line_total_usd']:.3f}"))
 
             btn_remove = QPushButton("✕")
             btn_remove.setFixedSize(40, 30)
@@ -292,14 +292,14 @@ class MoonMartPOS(QMainWindow):
             item = self.cart[row_idx]
             item['quantity'] = quantity
             item['line_total'] = quantity * item['unit_price']
-            item['line_total_usd'] = round(quantity * item['unit_price_usd'], 2)
+            item['line_total_usd'] = db.calculate_usd_line_total(quantity, item['unit_price_usd'])
 
             # Updates the affected cells
             self.cart_table.item(row_idx, 3).setText(
                 f"{item['line_total']} KHR"
             )
             self.cart_table.item(row_idx, 4).setText(
-                f"${item['line_total_usd']:.2f}"
+                f"${item['line_total_usd']:.3f}"
             )
 
             self.update_totals()
@@ -605,7 +605,7 @@ class MoonMartPOS(QMainWindow):
         QMessageBox.information(
             self, 
             "Business-Day Sales Summary (7 AM–2 AM)",
-            f"Total Completed Transactions: {tx_count}\nTotal Daily Revenue: {revenue} KHR | ${revenue_usd:.2f}"
+            f"Total Completed Transactions: {tx_count}\nTotal Daily Revenue: {revenue} KHR | ${revenue_usd:.3f}"
         )
 
 

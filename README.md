@@ -51,7 +51,7 @@ On startup, the application initializes missing tables and timestamp triggers an
 4. Open **Edit Product** for the same barcode and supply a name and retail price in KHR. Add cost, reorder level, and category ID if needed.
 5. Scan the barcode to add the completed product to the cart.
 
-When you edit the KHR retail price, the application sets the USD retail price to `round(KHR / 4000, 2)`. A category ID must already exist in the `categories` table; there is no category-management dialog. Leaving an edit field blank preserves its current value rather than clearing it.
+When you edit the KHR retail price, the application sets the USD retail price to KHR / 4000, rounded half up to three decimal places. For example, 500 KHR becomes $0.125. USD amounts are displayed with three decimal places throughout the cart, totals, receipts, and sales summary. Existing product prices and historical sales are not automatically repriced. A category ID must already exist in the `categories` table; there is no category-management dialog. Leaving an edit field blank preserves its current value rather than clearing it.
 
 New products without prices cannot be scanned into the cart. Current scan validation also rejects zero prices, so free-item sales are not supported through barcode entry.
 
@@ -63,7 +63,7 @@ New products without prices cannot be scanned into the cart. Current scan valida
 4. Optionally enter a whole-number **Discount (KHR)** below Total. Blank means no discount.
 5. Confirm payment, then click **Pay Cash** or **Pay KHQR**.
 
-The discount is applied once to the entire sale, leaving product prices and line totals unchanged. Its USD equivalent uses 4,000 KHR per dollar, rounded to the nearest cent (half up). It is deducted from the sum of the stored USD line totals, so imported USD prices are preserved. Discounts that exceed either subtotal are rejected, and payment buttons are disabled until corrected. Reducing the cart can make a previously valid discount too large; adjust it before checkout.
+The discount is applied once to the entire sale, leaving product prices and line totals unchanged. Its USD equivalent uses 4,000 KHR per dollar, rounded to three decimal places (half up). It is deducted from the sum of the stored USD line totals, so imported USD prices are preserved. Discounts that exceed either subtotal are rejected, and payment buttons are disabled until corrected. Reducing the cart can make a previously valid discount too large; adjust it before checkout.
 
 Successful sales store the KHR discount in `sales_transactions.discount_amount` and the discounted amounts in the transaction totals. The daily summary therefore reports revenue after discounts. Receipts show subtotal, discount, and payable totals when a discount is applied. The discount is cleared when checkout succeeds or the cart is emptied; it stays entered after a failed checkout. A discount equal to the whole subtotal is allowed if neither currency total becomes negative.
 

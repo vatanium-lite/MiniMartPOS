@@ -6,6 +6,16 @@ from decimal import Decimal, ROUND_HALF_UP
 
 DB_FILE = "moonmart.db"
 UNCHANGED = object()  # Sentinel value to indicate unchanged fields
+USD_PRECISION = Decimal('0.001')
+
+
+def round_usd(value) -> float:
+    """Round USD consistently to three decimal places, with half values rounded up."""
+    return float(Decimal(str(value)).quantize(USD_PRECISION, rounding=ROUND_HALF_UP))
+
+
+def calculate_usd_line_total(quantity: int, unit_price_usd) -> float:
+    return round_usd(Decimal(str(unit_price_usd)) * quantity)
 
 def get_db():
     """Get a connection to the SQLite database."""
@@ -38,7 +48,7 @@ def init_db():
                 name VARCHAR(100), 
                 unit_cost INT, 
                 retail_price INT, 
-                retail_price_usd DECIMAL(6, 2), 
+                retail_price_usd DECIMAL(7, 3),
                 reorder_level INT, 
                 created_at TIMESTAMP DEFAULT (datetime('now', '+7 hours')),
 
@@ -61,7 +71,7 @@ def init_db():
                 transaction_id INTEGER PRIMARY KEY, 
                 discount_amount INT DEFAULT 0, 
                 total_amount INT NOT NULL, 
-                total_amount_usd DECIMAL(6, 2) NOT NULL, 
+                total_amount_usd DECIMAL(7, 3) NOT NULL,
                 payment_method TEXT NOT NULL CHECK (payment_method IN ('cash', 'KHQR')), 
                 created_at TIMESTAMP DEFAULT (datetime('now', '+7 hours'))
             );
@@ -72,7 +82,7 @@ def init_db():
                 quantity INT NOT NULL, 
                 unit_price INT NOT NULL, 
                 line_total INT NOT NULL, 
-                line_total_usd DECIMAL(6, 2) NOT NULL,
+                line_total_usd DECIMAL(7, 3) NOT NULL,
 
                 CONSTRAINT fk_transaction_id 
                     FOREIGN KEY (transaction_id) 
@@ -161,10 +171,10 @@ def calculate_checkout_totals(cart_items: list, discount_amount: int = 0) -> tup
     if type(discount_amount) is not int or discount_amount < 0:
         raise ValueError("Discount must be a non-negative whole number in KHR.")
     subtotal = sum(item['line_total'] for item in cart_items)
-    subtotal_usd = sum((Decimal(str(item['line_total_usd'])) for item in cart_items), Decimal('0'))
-    subtotal_usd = subtotal_usd.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-    # Match the product editor's 4,000 KHR/USD rate, rounded to receipt cents.
-    discount_usd = (Decimal(discount_amount) / 4000).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    subtotal_usd = sum((Decimal(str(round_usd(item['line_total_usd']))) for item in cart_items), Decimal('0'))
+    subtotal_usd = subtotal_usd.quantize(USD_PRECISION, rounding=ROUND_HALF_UP)
+    # Match the product editor's 4,000 KHR/USD rate, rounded to three decimals.
+    discount_usd = (Decimal(discount_amount) / 4000).quantize(USD_PRECISION, rounding=ROUND_HALF_UP)
     if discount_amount > subtotal:
         raise ValueError(f"Discount cannot exceed the subtotal of {subtotal} KHR.")
     if discount_usd > subtotal_usd:
@@ -193,7 +203,7 @@ def process_checkout(cart_items: list, payment_method: str, discount_amount: int
             cursor.execute(
                 """INSERT INTO pos_item_sales (transaction_id, product_id, quantity, unit_price, line_total, line_total_usd) 
                     VALUES (?, ?, ?, ?, ?, ?)""",
-                (transaction_id, item['product_id'], item['quantity'], item['unit_price'], item['line_total'], item['line_total_usd'])
+                (transaction_id, item['product_id'], item['quantity'], item['unit_price'], item['line_total'], round_usd(item['line_total_usd']))
             )
 
             cursor.execute( # Fetch available batches sorted by FIFO
@@ -336,7 +346,7 @@ def edit_product(barcode: str, category_id: int = UNCHANGED, name: str = UNCHANG
 
     if retail_price is not UNCHANGED:
         updates['retail_price'] = retail_price
-        updates['retail_price_usd'] = round(int(retail_price) / 4000, 2)
+        updates['retail_price_usd'] = round_usd(Decimal(int(retail_price)) / 4000)
 
     if reorder_level is not UNCHANGED:
         updates['reorder_level'] = reorder_level
