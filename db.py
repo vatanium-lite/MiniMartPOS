@@ -2,6 +2,7 @@
 import sqlite3
 from contextlib import closing
 from datetime import date, datetime
+from decimal import Decimal, ROUND_HALF_UP
 
 DB_FILE = "moonmart.db"
 UNCHANGED = object()  # Sentinel value to indicate unchanged fields
@@ -155,18 +156,33 @@ def get_product_by_barcode(barcode: str):
         cursor.execute("SELECT * FROM products WHERE barcode = ?", (barcode,))
         return cursor.fetchone() # Loads only one row at a time, ideal for retrieving specific records
     
-def process_checkout(cart_items: list, payment_method: str) -> int: # cart_items is a list of dictionaries containing name, product_id, quantity, unit_price, line_total, and line_total_usd for each item
+def calculate_checkout_totals(cart_items: list, discount_amount: int = 0) -> tuple:
+    """Apply a whole-sale KHR discount without changing any product line totals."""
+    if type(discount_amount) is not int or discount_amount < 0:
+        raise ValueError("Discount must be a non-negative whole number in KHR.")
+    subtotal = sum(item['line_total'] for item in cart_items)
+    subtotal_usd = sum((Decimal(str(item['line_total_usd'])) for item in cart_items), Decimal('0'))
+    subtotal_usd = subtotal_usd.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    # Match the product editor's 4,000 KHR/USD rate, rounded to receipt cents.
+    discount_usd = (Decimal(discount_amount) / 4000).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    if discount_amount > subtotal:
+        raise ValueError(f"Discount cannot exceed the subtotal of {subtotal} KHR.")
+    if discount_usd > subtotal_usd:
+        raise ValueError("Discount cannot exceed the USD subtotal at 4,000 KHR per USD.")
+    return subtotal - discount_amount, float(subtotal_usd - discount_usd)
+
+
+def process_checkout(cart_items: list, payment_method: str, discount_amount: int = 0) -> int:
     """Atomic checkout transaction."""
-    total_amount = sum(item['line_total'] for item in cart_items)
-    total_amount_usd = sum(item['line_total_usd'] for item in cart_items)
+    total_amount, total_amount_usd = calculate_checkout_totals(cart_items, discount_amount)
 
     with get_db() as conn:
         cursor = conn.cursor()
 
         # 1. Record Sale
         cursor.execute(
-            "INSERT INTO sales_transactions (total_amount, total_amount_usd, payment_method) VALUES (?, ?, ?)",
-            (total_amount, total_amount_usd, payment_method)
+            "INSERT INTO sales_transactions (total_amount, total_amount_usd, payment_method, discount_amount) VALUES (?, ?, ?, ?)",
+            (total_amount, total_amount_usd, payment_method, discount_amount)
         )
 
         transaction_id = cursor.lastrowid

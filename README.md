@@ -6,6 +6,7 @@ A Windows desktop point-of-sale application built with Python, PyQt6, and SQLite
 
 - Scan a barcode or type it and press Enter.
 - Edit cart quantities, remove items, and calculate KHR and USD totals.
+- Apply a whole-sale discount in KHR, with discounted checkout totals and receipts.
 - Record sales as cash or KHQR payments.
 - Deduct stock from batches with the earliest expiration date first.
 - Reject insufficient-stock checkout, show the affected product, and roll back the whole sale.
@@ -59,7 +60,12 @@ New products without prices cannot be scanned into the cart. Current scan valida
 1. Focus the barcode field and scan a product, or type its barcode and press Enter.
 2. Scan again to increase its quantity, or edit the **Qty** cell directly.
 3. Use the row's **×** button to remove an item. Invalid quantities are rejected and the previous quantity is restored.
-4. Confirm payment, then click **Pay Cash** or **Pay KHQR**.
+4. Optionally enter a whole-number **Discount (KHR)** below Total. Blank means no discount.
+5. Confirm payment, then click **Pay Cash** or **Pay KHQR**.
+
+The discount is applied once to the entire sale, leaving product prices and line totals unchanged. Its USD equivalent uses 4,000 KHR per dollar, rounded to the nearest cent (half up). It is deducted from the sum of the stored USD line totals, so imported USD prices are preserved. Discounts that exceed either subtotal are rejected, and payment buttons are disabled until corrected. Reducing the cart can make a previously valid discount too large; adjust it before checkout.
+
+Successful sales store the KHR discount in `sales_transactions.discount_amount` and the discounted amounts in the transaction totals. The daily summary therefore reports revenue after discounts. Receipts show subtotal, discount, and payable totals when a discount is applied. The discount is cleared when checkout succeeds or the cart is emptied; it stays entered after a failed checkout. A discount equal to the whole subtotal is allowed if neither currency total becomes negative.
 
 Successful checkout records the sale and its line items, deducts stock, attempts receipt printing, and clears the cart. Manual quantity edits use the USD unit price saved in the cart; they do not independently convert the KHR line total.
 
@@ -148,9 +154,9 @@ From the project directory, using the same virtual environment:
 .\.venv\Scripts\python.exe -B -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-The included tests cover Khmer rendering, receipt width/wrapping, font commands, and printer cleanup. They use offscreen Qt rendering and simulated printers; they do not write to the sales database or send physical print jobs. Khmer rendering tests require a suitable font. On Windows, the test setup attempts to load `C:/Windows/Fonts/KhmerUI.ttf` if the offscreen backend does not discover one.
+The included tests cover discount validation and checkout, discounted reporting, Khmer rendering, receipt width/wrapping, font commands, and printer cleanup. They use temporary databases, offscreen Qt rendering, and simulated printers; they do not write to the live sales database or send physical print jobs. Khmer rendering tests require a suitable font. On Windows, the test setup attempts to load `C:/Windows/Fonts/KhmerUI.ttf` if the offscreen backend does not discover one.
 
-A separate, temporary development test harness previously exercised the broader POS workflows, including checkout, stock, timestamps, and UI interactions. That harness is not included in this repository; the command above runs only the included receipt tests, not the full 80-check development run.
+A separate, temporary development test harness also exercises the broader POS workflows, including stock, timestamps, and UI interactions. That harness is not included in this repository; the command above runs the included discount and receipt tests, not that broader development suite.
 
 ## Troubleshooting
 
@@ -170,5 +176,6 @@ printer.py                   ESC/POS receipt layout and Khmer image rendering
 style.qss                    Qt stylesheet
 tests/test_printer_khmer.py   Khmer receipt tests
 tests/test_printer_layout.py  Receipt width and command tests
+tests/test_discount.py        Discount UI, checkout, reporting, and receipt tests
 moonmart.db                  Local application data (generated, Git-ignored)
 ```
