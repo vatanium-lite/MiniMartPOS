@@ -76,7 +76,7 @@ class MoonMartPOS(QMainWindow):
         self.discount_input.setToolTip("Whole-sale discount in KHR; blank means 0. USD conversion: 4,000 KHR = $1.")
         self.discount_input.setMaxLength(12)
         self.discount_input.setValidator(QRegularExpressionValidator(QRegularExpression('[0-9]*'), self.discount_input))
-        right_panel.addWidget(self.discount_input)
+        right_panel.addWidget(self.discount_input, alignment=Qt.AlignmentFlag.AlignRight)
         self.discount_error = QLabel()
         self.discount_error.setObjectName("discount_error")
         self.discount_error.setWordWrap(True)
