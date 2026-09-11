@@ -21,8 +21,9 @@ QLineEdit#main_barcode_input {
 }
 
 QLineEdit#discount_input {
-    min-width: 200px;
-    max-width: 200px;
+    /* About 156px including padding/borders: 30% narrower than 222px. */
+    min-width: 134px;
+    max-width: 134px;
     font-size: 16px;
 }
 
