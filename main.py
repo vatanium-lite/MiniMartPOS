@@ -124,6 +124,11 @@ class MoonMartPOS(QMainWindow):
         btn_edit_product.clicked.connect(self.handle_edit_product)
         right_panel.addWidget(btn_edit_product)
 
+        btn_add_product = QPushButton("Add Product")
+        btn_add_product.setObjectName("btn_add_product")
+        btn_add_product.clicked.connect(self.handle_add_product)
+        right_panel.addWidget(btn_add_product)
+
         main_layout.addLayout(left_panel, 7)
         main_layout.addLayout(right_panel, 3)
 
@@ -471,6 +476,78 @@ class MoonMartPOS(QMainWindow):
         button_box.accepted.connect(delete_stock_submission) # If the user clicks OK (accepted), the delete_stock_submission function is called
         button_box.rejected.connect(dialog.reject)
 
+        dialog.exec()
+
+    def handle_add_product(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Add Product")
+        dialog.setMinimumWidth(460)
+        form_layout = QFormLayout(dialog)
+
+        name_input = QLineEdit()
+        name_input.setObjectName("add_product_name")
+        name_input.setPlaceholderText("Enter product name")
+        form_layout.addRow("Name (required):", name_input)
+
+        barcode_input = QLineEdit()
+        barcode_input.setObjectName("add_product_barcode")
+        barcode_input.setPlaceholderText("Enter or scan barcode")
+        form_layout.addRow("Barcode (required):", barcode_input)
+
+        unit_cost_input = QLineEdit()
+        unit_cost_input.setObjectName("add_product_unit_cost")
+        unit_cost_input.setPlaceholderText("Optional; blank means 0")
+        form_layout.addRow("Unit cost (KHR):", unit_cost_input)
+
+        price_input = QLineEdit()
+        price_input.setObjectName("add_product_price")
+        price_input.setPlaceholderText("Enter price in KHR")
+        form_layout.addRow("Price (KHR, required):", price_input)
+
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        form_layout.addRow(button_box)
+
+        def submit():
+            try:
+                name = name_input.text().strip()
+                barcode = barcode_input.text().strip()
+                if not name:
+                    name_input.setFocus()
+                    raise ValueError("Product name is required.")
+                if not barcode:
+                    barcode_input.setFocus()
+                    raise ValueError("Barcode is required.")
+
+                def parse_khr(field, label, optional=False):
+                    text = field.text().strip()
+                    if optional and not text:
+                        return 0
+                    if not text:
+                        field.setFocus()
+                        raise ValueError(f"{label} is required.")
+                    if not text.isascii() or not text.isdigit() or len(text) > 19:
+                        field.setFocus()
+                        raise ValueError(f"{label} must be a non-negative whole number in KHR (up to 19 digits).")
+                    return int(text)
+
+                unit_cost = parse_khr(unit_cost_input, "Unit cost", optional=True)
+                price = parse_khr(price_input, "Price")
+                db.add_product(name, barcode, price, unit_cost)
+            except ValueError as error:
+                QMessageBox.warning(dialog, "Cannot Add Product", str(error))
+                return
+            except Exception as error:
+                QMessageBox.critical(dialog, "Database Error", f"Failed to add product:\n{error}")
+                return
+
+            QMessageBox.information(dialog, "Success", f"Product '{name}' added successfully. Use Add Stock to add inventory.")
+            dialog.accept()
+
+        button_box.accepted.connect(submit)
+        button_box.rejected.connect(dialog.reject)
+        name_input.setFocus()
         dialog.exec()
 
     def handle_edit_product(self):
