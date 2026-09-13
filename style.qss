@@ -27,6 +27,12 @@ QLineEdit#discount_input {
     font-size: 16px;
 }
 
+/* Match the payment buttons' overall width, including their padding. */
+QWidget#discount_row {
+    min-width: 220px;
+    max-width: 220px;
+}
+
 QLabel#discount_error {
     color: #991220;
     font-size: 12px;
@@ -109,6 +115,13 @@ QPushButton#btn_report {
     text-decoration: underline;
 }
 
+QPushButton#btn_add_product {
+    background-color: #E67E22;
+    color: white;
+    font-size: 16px;
+    padding: 10px;
+}
+
 QPushButton#btn_remove {
     color: #991220;
 }
@@ -117,13 +130,23 @@ QPushButton#btn_remove {
    Change both width values together to resize these buttons. */
 QPushButton#btn_cash,
 QPushButton#btn_qr,
-QPushButton#btn_report,
-QPushButton#btn_add_stock,
-QPushButton#btn_delete_stock,
-QPushButton#btn_edit_product {
+QPushButton#btn_report{
     min-width: 200px;
     max-width: 200px;
+    padding: 10px;
+    border-radius: 0;
+}
+
+/* Inventory/product buttons: about 165px overall, 25% narrower than 220px. */
+QPushButton#btn_add_stock,
+QPushButton#btn_delete_stock,
+QPushButton#btn_edit_product,
+QPushButton#btn_add_product {
+    min-width: 145px;
+    max-width: 145px;
     padding-left: 10px;
     padding-right: 10px;
     border-radius: 0;
+    min-height: 15px;
+    max-height: 15px;
 }

@@ -76,7 +76,13 @@ class MoonMartPOS(QMainWindow):
         self.discount_input.setToolTip("Whole-sale discount in KHR; blank means 0. USD conversion: 4,000 KHR = $1.")
         self.discount_input.setMaxLength(12)
         self.discount_input.setValidator(QRegularExpressionValidator(QRegularExpression('[0-9]*'), self.discount_input))
-        right_panel.addWidget(self.discount_input, alignment=Qt.AlignmentFlag.AlignRight)
+        discount_row = QWidget()
+        discount_row.setObjectName("discount_row")
+        discount_layout = QHBoxLayout(discount_row)
+        discount_layout.setContentsMargins(0, 0, 0, 0)
+        discount_layout.addStretch()
+        discount_layout.addWidget(self.discount_input)
+        right_panel.addWidget(discount_row, alignment=Qt.AlignmentFlag.AlignHCenter)
         self.discount_error = QLabel()
         self.discount_error.setObjectName("discount_error")
         self.discount_error.setWordWrap(True)
@@ -87,19 +93,19 @@ class MoonMartPOS(QMainWindow):
         btn_cash = QPushButton("Pay Cash")
         btn_cash.setObjectName("btn_cash")
         btn_cash.clicked.connect(lambda: self.process_payment("cash")) # Binds button click event to payment processor method with cash
-        right_panel.addWidget(btn_cash)
+        right_panel.addWidget(btn_cash, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         btn_qr = QPushButton("Pay KHQR")
         btn_qr.setObjectName("btn_qr")
         btn_qr.clicked.connect(lambda: self.process_payment("KHQR")) 
-        right_panel.addWidget(btn_qr)
+        right_panel.addWidget(btn_qr, alignment=Qt.AlignmentFlag.AlignHCenter)
         self.payment_buttons = (btn_cash, btn_qr)
 
         # Daily Sales Report Button
         btn_report = QPushButton("Daily Sales Summary")
         btn_report.setObjectName("btn_report")
         btn_report.clicked.connect(self.show_daily_report)
-        right_panel.addWidget(btn_report)
+        right_panel.addWidget(btn_report, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         right_panel.addStretch()
 
@@ -108,29 +114,30 @@ class MoonMartPOS(QMainWindow):
         btn_add_stock.setObjectName("btn_add_stock")
         btn_add_stock.setStyleSheet("background-color: #E67E22; color: white; font-size: 16px; padding: 10px;")
         btn_add_stock.clicked.connect(self.handle_add_stock)
-        right_panel.addWidget(btn_add_stock)
+        right_panel.addWidget(btn_add_stock, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         # Stock Reduction Button
         btn_delete_stock = QPushButton("Delete Stock")
         btn_delete_stock.setObjectName("btn_delete_stock")
         btn_delete_stock.setStyleSheet("background-color: #E67E22; color: white; font-size: 16px; padding: 10px;")
         btn_delete_stock.clicked.connect(self.handle_delete_stock)
-        right_panel.addWidget(btn_delete_stock)
+        right_panel.addWidget(btn_delete_stock, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         # Stock Modification Button
         btn_edit_product = QPushButton("Edit Product")
         btn_edit_product.setObjectName("btn_edit_product")
         btn_edit_product.setStyleSheet("background-color: #E67E22; color: white; font-size: 16px; padding: 10px;")
         btn_edit_product.clicked.connect(self.handle_edit_product)
-        right_panel.addWidget(btn_edit_product)
+        right_panel.addWidget(btn_edit_product, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         btn_add_product = QPushButton("Add Product")
         btn_add_product.setObjectName("btn_add_product")
         btn_add_product.clicked.connect(self.handle_add_product)
-        right_panel.addWidget(btn_add_product)
+        right_panel.addWidget(btn_add_product, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        main_layout.addLayout(left_panel, 7)
-        main_layout.addLayout(right_panel, 3)
+        # Let the table take extra width; keep the controls at their needed width.
+        main_layout.addLayout(left_panel, 1)
+        main_layout.addLayout(right_panel, 0)
 
         container = QWidget()
         container.setLayout(main_layout)
