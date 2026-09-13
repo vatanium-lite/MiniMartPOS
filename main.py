@@ -76,7 +76,13 @@ class MoonMartPOS(QMainWindow):
         self.discount_input.setToolTip("Whole-sale discount in KHR; blank means 0. USD conversion: 4,000 KHR = $1.")
         self.discount_input.setMaxLength(12)
         self.discount_input.setValidator(QRegularExpressionValidator(QRegularExpression('[0-9]*'), self.discount_input))
-        right_panel.addWidget(self.discount_input, alignment=Qt.AlignmentFlag.AlignRight)
+        discount_row = QWidget()
+        discount_row.setObjectName("discount_row")
+        discount_layout = QHBoxLayout(discount_row)
+        discount_layout.setContentsMargins(0, 0, 0, 0)
+        discount_layout.addStretch()
+        discount_layout.addWidget(self.discount_input)
+        right_panel.addWidget(discount_row, alignment=Qt.AlignmentFlag.AlignHCenter)
         self.discount_error = QLabel()
         self.discount_error.setObjectName("discount_error")
         self.discount_error.setWordWrap(True)
@@ -87,19 +93,19 @@ class MoonMartPOS(QMainWindow):
         btn_cash = QPushButton("Pay Cash")
         btn_cash.setObjectName("btn_cash")
         btn_cash.clicked.connect(lambda: self.process_payment("cash")) # Binds button click event to payment processor method with cash
-        right_panel.addWidget(btn_cash)
+        right_panel.addWidget(btn_cash, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         btn_qr = QPushButton("Pay KHQR")
         btn_qr.setObjectName("btn_qr")
         btn_qr.clicked.connect(lambda: self.process_payment("KHQR")) 
-        right_panel.addWidget(btn_qr)
+        right_panel.addWidget(btn_qr, alignment=Qt.AlignmentFlag.AlignHCenter)
         self.payment_buttons = (btn_cash, btn_qr)
 
         # Daily Sales Report Button
         btn_report = QPushButton("Daily Sales Summary")
         btn_report.setObjectName("btn_report")
         btn_report.clicked.connect(self.show_daily_report)
-        right_panel.addWidget(btn_report)
+        right_panel.addWidget(btn_report, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         right_panel.addStretch()
 
@@ -108,24 +114,30 @@ class MoonMartPOS(QMainWindow):
         btn_add_stock.setObjectName("btn_add_stock")
         btn_add_stock.setStyleSheet("background-color: #E67E22; color: white; font-size: 16px; padding: 10px;")
         btn_add_stock.clicked.connect(self.handle_add_stock)
-        right_panel.addWidget(btn_add_stock)
+        right_panel.addWidget(btn_add_stock, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         # Stock Reduction Button
         btn_delete_stock = QPushButton("Delete Stock")
         btn_delete_stock.setObjectName("btn_delete_stock")
         btn_delete_stock.setStyleSheet("background-color: #E67E22; color: white; font-size: 16px; padding: 10px;")
         btn_delete_stock.clicked.connect(self.handle_delete_stock)
-        right_panel.addWidget(btn_delete_stock)
+        right_panel.addWidget(btn_delete_stock, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         # Stock Modification Button
         btn_edit_product = QPushButton("Edit Product")
         btn_edit_product.setObjectName("btn_edit_product")
         btn_edit_product.setStyleSheet("background-color: #E67E22; color: white; font-size: 16px; padding: 10px;")
         btn_edit_product.clicked.connect(self.handle_edit_product)
-        right_panel.addWidget(btn_edit_product)
+        right_panel.addWidget(btn_edit_product, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        main_layout.addLayout(left_panel, 7)
-        main_layout.addLayout(right_panel, 3)
+        btn_add_product = QPushButton("Add Product")
+        btn_add_product.setObjectName("btn_add_product")
+        btn_add_product.clicked.connect(self.handle_add_product)
+        right_panel.addWidget(btn_add_product, alignment=Qt.AlignmentFlag.AlignHCenter)
+
+        # Let the table take extra width; keep the controls at their needed width.
+        main_layout.addLayout(left_panel, 1)
+        main_layout.addLayout(right_panel, 0)
 
         container = QWidget()
         container.setLayout(main_layout)
@@ -471,6 +483,78 @@ class MoonMartPOS(QMainWindow):
         button_box.accepted.connect(delete_stock_submission) # If the user clicks OK (accepted), the delete_stock_submission function is called
         button_box.rejected.connect(dialog.reject)
 
+        dialog.exec()
+
+    def handle_add_product(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Add Product")
+        dialog.setMinimumWidth(460)
+        form_layout = QFormLayout(dialog)
+
+        name_input = QLineEdit()
+        name_input.setObjectName("add_product_name")
+        name_input.setPlaceholderText("Enter product name")
+        form_layout.addRow("Name (required):", name_input)
+
+        barcode_input = QLineEdit()
+        barcode_input.setObjectName("add_product_barcode")
+        barcode_input.setPlaceholderText("Enter or scan barcode")
+        form_layout.addRow("Barcode (required):", barcode_input)
+
+        unit_cost_input = QLineEdit()
+        unit_cost_input.setObjectName("add_product_unit_cost")
+        unit_cost_input.setPlaceholderText("Optional; blank means 0")
+        form_layout.addRow("Unit cost (KHR):", unit_cost_input)
+
+        price_input = QLineEdit()
+        price_input.setObjectName("add_product_price")
+        price_input.setPlaceholderText("Enter price in KHR")
+        form_layout.addRow("Price (KHR, required):", price_input)
+
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        form_layout.addRow(button_box)
+
+        def add_product_submission():
+            try:
+                name = name_input.text().strip()
+                barcode = barcode_input.text().strip()
+                if not name:
+                    name_input.setFocus()
+                    raise ValueError("Product name is required.")
+                if not barcode:
+                    barcode_input.setFocus()
+                    raise ValueError("Barcode is required.")
+
+                def parse_khr(field, label, optional=False):
+                    text = field.text().strip()
+                    if optional and not text:
+                        return 0
+                    if not text:
+                        field.setFocus()
+                        raise ValueError(f"{label} is required.")
+                    if not text.isascii() or not text.isdigit() or len(text) > 19:
+                        field.setFocus()
+                        raise ValueError(f"{label} must be a non-negative whole number in KHR (up to 19 digits).")
+                    return int(text)
+
+                unit_cost = parse_khr(unit_cost_input, "Unit cost", optional=True)
+                price = parse_khr(price_input, "Price")
+                db.add_product(name, barcode, price, unit_cost)
+            except ValueError as error:
+                QMessageBox.warning(dialog, "Cannot Add Product", str(error))
+                return
+            except Exception as error:
+                QMessageBox.critical(dialog, "Database Error", f"Failed to add product:\n{error}")
+                return
+
+            QMessageBox.information(dialog, "Success", f"Product '{name}' added successfully. Use Add Stock to add inventory.")
+            dialog.accept()
+
+        button_box.accepted.connect(add_product_submission)
+        button_box.rejected.connect(dialog.reject)
+        name_input.setFocus()
         dialog.exec()
 
     def handle_edit_product(self):
