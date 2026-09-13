@@ -257,6 +257,33 @@ def process_checkout(cart_items: list, payment_method: str, discount_amount: int
 
         return transaction_id
 
+def add_product(name: str, barcode: str, retail_price: int, unit_cost: int = 0) -> int:
+    """Create a product without inventory; prices are whole, non-negative KHR."""
+    if not isinstance(name, str) or not name.strip():
+        raise ValueError("Product name is required.")
+    if not isinstance(barcode, str) or not barcode.strip():
+        raise ValueError("Barcode is required.")
+    name, barcode = name.strip(), barcode.strip()
+    for label, value in (("Unit cost", unit_cost), ("Price", retail_price)):
+        if type(value) is not int or not 0 <= value <= 9223372036854775807:
+            raise ValueError(f"{label} must be a non-negative whole number within the supported range.")
+
+    price_usd = round_usd(Decimal(retail_price) / 4000)
+    with closing(get_db()) as conn, conn:
+        try:
+            cursor = conn.execute(
+                """INSERT INTO products
+                   (name, barcode, unit_cost, retail_price, retail_price_usd, reorder_level)
+                   VALUES (?, ?, ?, ?, ?, 0)""",
+                (name, barcode, unit_cost, retail_price, price_usd),
+            )
+        except sqlite3.IntegrityError:
+            if conn.execute("SELECT 1 FROM products WHERE barcode = ?", (barcode,)).fetchone():
+                raise ValueError(f"A product with barcode {barcode} already exists.") from None
+            raise
+        return cursor.lastrowid
+
+
 def add_stock(barcode: str, quantity: int, exp_date: date): # Stock replenishment
     product = get_product_by_barcode(barcode)
 
