@@ -509,7 +509,7 @@ class MoonMartPOS(QMainWindow):
         )
         form_layout.addRow(button_box)
 
-        def submit():
+        def add_product_submission():
             try:
                 name = name_input.text().strip()
                 barcode = barcode_input.text().strip()
@@ -545,7 +545,7 @@ class MoonMartPOS(QMainWindow):
             QMessageBox.information(dialog, "Success", f"Product '{name}' added successfully. Use Add Stock to add inventory.")
             dialog.accept()
 
-        button_box.accepted.connect(submit)
+        button_box.accepted.connect(add_product_submission)
         button_box.rejected.connect(dialog.reject)
         name_input.setFocus()
         dialog.exec()

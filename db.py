@@ -265,7 +265,7 @@ def add_product(name: str, barcode: str, retail_price: int, unit_cost: int = 0) 
         raise ValueError("Barcode is required.")
     name, barcode = name.strip(), barcode.strip()
     for label, value in (("Unit cost", unit_cost), ("Price", retail_price)):
-        if type(value) is not int or not 0 <= value <= 9223372036854775807:
+        if type(value) is not int or not 0 <= value <= 9223372036854775807: # Handles overflow error
             raise ValueError(f"{label} must be a non-negative whole number within the supported range.")
 
     price_usd = round_usd(Decimal(retail_price) / 4000)

@@ -45,10 +45,10 @@ On startup, the application initializes missing tables and timestamp triggers an
 
 ## Add your first product
 
-1. Create the product's barcode record in the `products` table using DB Browser or a CSV import.
+1. Open **Add Product** below **Edit Product**. Enter a name, barcode, and whole-number price in KHR (all required). Unit cost in KHR is optional and defaults to 0 when blank. Cost and price must be non-negative integers. Duplicate barcodes show a warning without changing the existing product. The USD price is calculated at 4,000 KHR/USD, rounded to three decimals.
 2. Open **Add Stock** and enter the existing barcode, a positive whole-number quantity, and the expiration date.
 3. If the barcode does not exist, a warning appears and no product or stock batch is created.
-4. Open **Edit Product** for the same barcode and supply a name and retail price in KHR. Add cost, reorder level, and category ID if needed.
+4. Use **Edit Product** for the same barcode to change details or add a reorder level or category ID if needed.
 5. Scan the barcode to add the completed product to the cart.
 
 When you edit the KHR retail price, the application sets the USD retail price to KHR / 4000, rounded half up to three decimal places. For example, 500 KHR becomes $0.125. USD amounts are displayed with three decimal places throughout the cart, totals, receipts, and sales summary. Existing product prices and historical sales are not automatically repriced. A category ID must already exist in the `categories` table; there is no category-management dialog. Leaving an edit field blank preserves its current value rather than clearing it.
