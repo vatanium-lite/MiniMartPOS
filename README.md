@@ -45,9 +45,9 @@ On startup, the application initializes missing tables and timestamp triggers an
 
 ## Add your first product
 
-1. Open **Add Stock**.
-2. Enter the barcode, a positive whole-number quantity, and the expiration date.
-3. If the barcode is new, the application creates a product placeholder and its stock batch.
+1. Create the product's barcode record in the `products` table using DB Browser or a CSV import.
+2. Open **Add Stock** and enter the existing barcode, a positive whole-number quantity, and the expiration date.
+3. If the barcode does not exist, a warning appears and no product or stock batch is created.
 4. Open **Edit Product** for the same barcode and supply a name and retail price in KHR. Add cost, reorder level, and category ID if needed.
 5. Scan the barcode to add the completed product to the cart.
 
@@ -75,7 +75,7 @@ If stock is insufficient, the entire database transaction is rolled back, includ
 
 ## Inventory and product editing
 
-- **Add Stock:** creates a new batch for the barcode and expiration date.
+- **Add Stock:** creates a new batch for an existing product's barcode and expiration date; unknown barcodes show a warning.
 - **Delete Stock:** removes the requested quantity, starting with the earliest-expiring batch. It does not delete the product record. Insufficient stock causes the removal transaction to roll back.
 - **Edit Product:** changes only supplied fields. Invalid category references produce a database-error message rather than a success message.
 

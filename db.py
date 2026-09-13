@@ -258,31 +258,22 @@ def process_checkout(cart_items: list, payment_method: str, discount_amount: int
         return transaction_id
 
 def add_stock(barcode: str, quantity: int, exp_date: date): # Stock replenishment
-    # if product already exists
-
     product = get_product_by_barcode(barcode)
 
-    if product: # If product already exists
-        product_id = product['product_id']
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """ INSERT INTO batch_inventory (product_id, quantity, expiration_date) 
-                VALUES (?, ?, ?) """,
-                (product_id, quantity, exp_date)
-            )
-            conn.commit()
-            return cursor.fetchone() # Returns the last inserted row of batch_inventory table
+    if not product:
+        raise ValueError(
+            f"No product found for barcode: {barcode}.\n"
+            "Please add the product to the products table before adding stock."
+        )
 
-    with get_db() as conn: # If product does not exist, add to product_id first
+    with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            """ INSERT INTO products (barcode) 
-                VALUES (?) """,
-            (barcode,)
+            """ INSERT INTO batch_inventory (product_id, quantity, expiration_date)
+                VALUES (?, ?, ?) """,
+            (product['product_id'], quantity, exp_date)
         )
         conn.commit()
-        add_stock(barcode, quantity, exp_date) # Recursively call add_stock to add the stock after adding the product
 
 def delete_stock(barcode: str, quantity: int): # Stock removal
     product = get_product_by_barcode(barcode)

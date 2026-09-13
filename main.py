@@ -389,6 +389,9 @@ class MoonMartPOS(QMainWindow):
                 )
                 dialog.accept()  # Close the popup window
 
+            except ValueError as e:
+                QMessageBox.warning(dialog, "Cannot Add Stock", str(e))
+                barcode_input.setFocus()
             except Exception as e:
                 QMessageBox.critical(
                     dialog, "Database Error", f"Failed to update stock:\n{str(e)}"
