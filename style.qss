@@ -4,14 +4,11 @@ QMainWindow {
 }
 
 QLineEdit {
-    font-size: 18px;
+    font-size: 15px;
     padding: 10px;
     background-color: #f2f2f2;
     border: 1px solid #171717;
     color: black;
-    
-    min-height: 20px;
-    max-height: 20px;
 }
 
 QLineEdit#main_barcode_input {
