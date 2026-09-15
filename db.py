@@ -47,8 +47,8 @@ def init_db():
                 category_id INT, 
                 name VARCHAR(100), 
                 unit_cost INT, 
-                retail_price INT, 
-                retail_price_usd DECIMAL(7, 3),
+                retail_price INT,  -- Invalid prices are normalized to NULL by the triggers below.
+                retail_price_usd DECIMAL(7, 3),  -- Positive finite numbers or NULL; see triggers below.
                 reorder_level INT, 
                 created_at TIMESTAMP DEFAULT (datetime('now', '+7 hours')),
 
@@ -127,6 +127,54 @@ def init_db():
             );
             CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode);
             CREATE INDEX IF NOT EXISTS idx_sales_created ON sales_transactions(created_at);
+
+            -- Keep imports usable: preserve positive integers, clear invalid prices.
+            -- These persistent triggers also protect writes made through DB Browser.
+            CREATE TRIGGER IF NOT EXISTS products_price_insert
+            AFTER INSERT ON products
+            WHEN NEW.retail_price IS NOT NULL
+              AND (typeof(NEW.retail_price) != 'integer' OR NEW.retail_price <= 0)
+            BEGIN
+                UPDATE products
+                SET retail_price = NULL
+                WHERE product_id = NEW.product_id;
+            END;
+
+            CREATE TRIGGER IF NOT EXISTS products_price_update
+            AFTER UPDATE OF retail_price ON products
+            WHEN NEW.retail_price IS NOT NULL
+              AND (typeof(NEW.retail_price) != 'integer' OR NEW.retail_price <= 0)
+            BEGIN
+                UPDATE products
+                SET retail_price = NULL
+                WHERE product_id = NEW.product_id;
+            END;
+
+            -- USD allows fractions. The upper bound is SQLite's largest finite REAL,
+            -- so positive infinity (including overflowed numeric imports) is cleared.
+            CREATE TRIGGER IF NOT EXISTS products_usd_price_insert
+            AFTER INSERT ON products
+            WHEN NEW.retail_price_usd IS NOT NULL
+              AND (typeof(NEW.retail_price_usd) NOT IN ('integer', 'real')
+                   OR NEW.retail_price_usd <= 0
+                   OR NEW.retail_price_usd > 1.7976931348623157e308)
+            BEGIN
+                UPDATE products
+                SET retail_price_usd = NULL
+                WHERE product_id = NEW.product_id;
+            END;
+
+            CREATE TRIGGER IF NOT EXISTS products_usd_price_update
+            AFTER UPDATE OF retail_price_usd ON products
+            WHEN NEW.retail_price_usd IS NOT NULL
+              AND (typeof(NEW.retail_price_usd) NOT IN ('integer', 'real')
+                   OR NEW.retail_price_usd <= 0
+                   OR NEW.retail_price_usd > 1.7976931348623157e308)
+            BEGIN
+                UPDATE products
+                SET retail_price_usd = NULL
+                WHERE product_id = NEW.product_id;
+            END;
         """)
 
         # DB Browser's CSV importer may bind a default expression as literal text.
