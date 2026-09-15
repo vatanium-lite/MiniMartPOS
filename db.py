@@ -252,7 +252,7 @@ def process_checkout(cart_items: list, payment_method: str, discount_amount: int
 
         for key, label in (('unit_price_usd', 'USD price'), ('line_total_usd', 'USD line total')):
             value = item.get(key)
-            if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
+            if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)): #Python kinda treats boolean as integer, so we need to reject bool
                 reject(f"{label} must be a positive finite number.")
             if not Decimal(str(value)).is_finite() or value <= 0:
                 reject(f"{label} must be a positive finite number.")
