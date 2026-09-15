@@ -1,6 +1,7 @@
 # Main POS UI
 
 import sys
+from decimal import Decimal, DecimalException
 from tkinter import dialog
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QLineEdit, QTableWidget, QTableWidgetItem, 
@@ -180,34 +181,55 @@ class MoonMartPOS(QMainWindow):
             QMessageBox.warning(self, "Not Found", f"No product found for barcode: {barcode}")
             return
 
-        # Updates cart memory
-        for item in self.cart:
-            if item['product_id'] == product['product_id']:
-                if product['retail_price'] and product['retail_price_usd']:
-                    item['unit_price'] = product['retail_price']  # Fills the unit price in cart_table so the handle_cell_changed method can recalculate
-                    item['unit_price_usd'] = product['retail_price_usd']
-                    item['quantity'] += 1
-                    item['line_total'] = item['quantity'] * product['retail_price']
-                    item['line_total_usd'] = db.calculate_usd_line_total(item['quantity'], product['retail_price_usd'])
-                    self.update_cart_ui()
-                    return
-                else:
-                    QMessageBox.warning(self, "Invalid Price", f"No unit price for barcode: {barcode}")
-                    return
-            
-        if product['retail_price'] and product['retail_price_usd']: # Product without unit price will not be added
-            self.cart.append({ # Initialises if product is not already in the cart
-                'product_id': product['product_id'],
-                'name': product['name'],
-                'unit_price': product['retail_price'],
-                'unit_price_usd': product['retail_price_usd'],
-                'quantity': 1,
-                'line_total': product['retail_price'],
-                'line_total_usd': db.calculate_usd_line_total(1, product['retail_price_usd'])
-            })
-        else:
-            QMessageBox.warning(self, "Invalid Price", f"No unit price for barcode: {barcode}")
+        existing_item = next( # Loops through the cart to find the first matching item
+            (item for item in self.cart if item['product_id'] == product['product_id']), None # Returns item if it already exists in the cart, else None
+        )
+        try:
+            price = product['retail_price']
+            price_usd = product['retail_price_usd']
+            if type(price) is not int or not 0 < price <= 9223372036854775807:
+                raise ValueError("KHR price must be a positive integer within the supported range.")
+            if isinstance(price_usd, bool) or not isinstance(price_usd, (int, float, Decimal)):
+                raise ValueError("USD price must be a positive finite number.")
+            if not Decimal(str(price_usd)).is_finite() or price_usd <= 0:
+                raise ValueError("USD price must be a positive finite number.")
 
+            previous_quantity = existing_item['quantity'] if existing_item is not None else 0 # If scanned item already exists, fetch its quantity, else 0
+            if type(previous_quantity) is not int or previous_quantity < 0:
+                raise ValueError("The cart quantity is invalid. Remove this item and scan it again.")
+            new_quantity = previous_quantity + 1
+            new_line_total = new_quantity * price
+            if new_line_total > 9223372036854775807:
+                raise ValueError("The KHR line total exceeds the supported range.")
+            new_line_total_usd = db.calculate_usd_line_total(new_quantity, price_usd)
+            if new_line_total_usd <= 0:
+                raise ValueError("The USD line total must be positive after rounding to three decimals.")
+
+            # Prepare a separate candidate so failed calculations cannot change the cart.
+            candidate = dict(existing_item) if existing_item is not None else { # Makes a copy of item if it already exists, else creates a new one
+                'product_id': product['product_id'], 'name': product['name']
+            }
+            candidate.update(unit_price=price, unit_price_usd=price_usd,
+                             quantity=new_quantity, line_total=new_line_total,
+                             line_total_usd=new_line_total_usd)
+            candidate_cart = [candidate if item is existing_item else item for item in self.cart] # Makes a copy of cart, changing only existing and newly scanned item while keeping other items as is
+            if existing_item is None: 
+                candidate_cart.append(candidate) # For newly scanned item that does not exist in the cart, add it
+            subtotal, _ = db.calculate_checkout_totals(candidate_cart)
+            if subtotal > 9223372036854775807:
+                raise ValueError("The cart's KHR total exceeds the supported range.")
+        except (DecimalException, OverflowError):
+            QMessageBox.warning(self, "Invalid Price", f"Barcode: {barcode}\nThe USD amounts exceed the supported range.")
+            return
+        except ValueError as error:
+            QMessageBox.warning(self, "Invalid Price", f"Barcode: {barcode}\n{error}")
+            return
+
+        # All checks passed: temporary candidate_cart's sub_total can be calculated, so we commit the candidate to the real cart
+        if existing_item is None:
+            self.cart.append(candidate) # Adds new item in the cart if not exist
+        else:
+            existing_item.update(candidate) # Updates the item if exist
         self.update_cart_ui()
 
     def update_cart_ui(self):
