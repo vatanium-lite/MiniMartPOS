@@ -197,6 +197,8 @@ class MoonMartPOS(QMainWindow):
             previous_quantity = existing_item['quantity'] if existing_item is not None else 0 # If scanned item already exists, fetch its quantity, else 0
             if type(previous_quantity) is not int or previous_quantity < 0:
                 raise ValueError("The cart quantity is invalid. Remove this item and scan it again.")
+            if previous_quantity >= 1000:
+                raise ValueError("Quantity should not be greater than 1000 units.")
             new_quantity = previous_quantity + 1
             new_line_total = new_quantity * price
             if new_line_total > 9223372036854775807:
@@ -321,6 +323,9 @@ class MoonMartPOS(QMainWindow):
 
             if quantity < 1:
                 raise ValueError
+
+            if quantity > 1000:
+                raise OverflowError
             
             # Table rows follow the same order as the cart (sorting is disabled).
             item = self.cart[row_idx]
@@ -355,6 +360,23 @@ class MoonMartPOS(QMainWindow):
                 "Invalid Quantity",
                 "Please enter a valid positive integer for quantity."
             )
+        except (OverflowError):
+            # Restore the displayed quantity without triggering this handler again.
+            signals_were_blocked = self.cart_table.blockSignals(True) # Sets blockSignals to True and returns previous state (False)
+            try:
+                previous_quantity = str(self.cart[row_idx]['quantity'])
+                if quantity_item is not None:
+                    quantity_item.setText(previous_quantity)
+                else:
+                    self.cart_table.setItem(row_idx, 2, QTableWidgetItem(previous_quantity))
+            finally:
+                self.cart_table.blockSignals(signals_were_blocked) # Re-activates signals
+            QMessageBox.warning(
+                self,
+                "Invalid Quantity",
+                "Quantity should not be greater than 1000 units."
+            )
+
 
 
     def handle_add_stock(self):

@@ -249,6 +249,8 @@ def process_checkout(cart_items: list, payment_method: str, discount_amount: int
             reject("KHR price must be a positive integer within the supported range.")
         if type(quantity) is not int or not 0 < quantity <= 9223372036854775807:
             reject("quantity must be a positive integer within the supported range.")
+        if quantity > 1000:
+            reject("Quantity should not be greater than 1000 units.")
 
         for key, label in (('unit_price_usd', 'USD price'), ('line_total_usd', 'USD line total')):
             value = item.get(key)
