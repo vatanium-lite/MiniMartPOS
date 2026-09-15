@@ -2,7 +2,7 @@
 import sqlite3
 from contextlib import closing
 from datetime import date, datetime
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, DecimalException, ROUND_HALF_UP
 
 DB_FILE = "moonmart.db"
 UNCHANGED = object()  # Sentinel value to indicate unchanged fields
@@ -232,7 +232,50 @@ def calculate_checkout_totals(cart_items: list, discount_amount: int = 0) -> tup
 
 def process_checkout(cart_items: list, payment_method: str, discount_amount: int = 0) -> int:
     """Atomic checkout transaction."""
-    total_amount, total_amount_usd = calculate_checkout_totals(cart_items, discount_amount)
+    if not cart_items:
+        raise ValueError("The cart is empty.")
+
+    # Validate every cart line before calculating totals or opening a sale.
+    # Cart values may predate the database's price-normalizing triggers.
+    for item in cart_items:
+        product_label = f"{item.get('name') or 'Unnamed product'} (product ID: {item.get('product_id')})"
+
+        def reject(reason):
+            raise ValueError(f"Cannot check out {product_label}: {reason}\nCorrect the product and remove/re-scan this cart item.")
+
+        price = item.get('unit_price')
+        quantity = item.get('quantity')
+        if type(price) is not int or not 0 < price <= 9223372036854775807:
+            reject("KHR price must be a positive integer within the supported range.")
+        if type(quantity) is not int or not 0 < quantity <= 9223372036854775807:
+            reject("quantity must be a positive integer within the supported range.")
+
+        for key, label in (('unit_price_usd', 'USD price'), ('line_total_usd', 'USD line total')):
+            value = item.get(key)
+            if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
+                reject(f"{label} must be a positive finite number.")
+            if not Decimal(str(value)).is_finite() or value <= 0:
+                reject(f"{label} must be a positive finite number.")
+
+        line_total = item.get('line_total')
+        if type(line_total) is not int or not 0 < line_total <= 9223372036854775807:
+            reject("KHR line total must be a positive integer within the supported range.")
+        if line_total != quantity * price:
+            reject("KHR line total does not match the quantity and price.")
+        try:
+            expected_usd = calculate_usd_line_total(quantity, item['unit_price_usd'])
+            actual_usd = round_usd(item['line_total_usd'])
+        except (DecimalException, OverflowError):
+            reject("USD amounts exceed the supported range.")
+        if expected_usd <= 0 or actual_usd != expected_usd:
+            reject("USD line total does not match the quantity and price at three decimal places.")
+
+    try:
+        total_amount, total_amount_usd = calculate_checkout_totals(cart_items, discount_amount)
+    except (DecimalException, OverflowError):
+        raise ValueError("The sale's amounts exceed the supported range.") from None
+    if total_amount > 9223372036854775807:
+        raise ValueError("The sale's KHR total exceeds the supported range.")
 
     with get_db() as conn:
         cursor = conn.cursor()
