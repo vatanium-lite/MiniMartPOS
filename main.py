@@ -1,6 +1,7 @@
 # Main POS UI
 
 import sys
+import sqlite3
 from decimal import Decimal, DecimalException
 from tkinter import dialog
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
@@ -297,6 +298,10 @@ class MoonMartPOS(QMainWindow):
         except ValueError as error:
             QMessageBox.warning(self, "Checkout Failed", str(error))
             return
+        except sqlite3.OperationalError as operror:
+            QMessageBox.warning(self, "Checkout Failed", str(operror))
+            return
+
 
         # Trigger ESC/POS Thermal Print
         printer.print_receipt(transaction_id, self.cart, total, total_usd, payment_method, discount_amount=discount)
