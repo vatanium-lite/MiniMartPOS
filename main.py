@@ -427,9 +427,21 @@ class MoonMartPOS(QMainWindow):
                 )
                 return
 
-            if not quantity_text:
+            if not quantity_text: # Prevents the barcode scan auto-submission without quantity input
                 quantity_input.setFocus()
                 return
+
+            try:
+                int(quantity_text)
+            except ValueError:
+                QMessageBox.warning(
+                    dialog,
+                    "Input Error",
+                    "Please enter a valid positive integer for quantity.",
+                )
+                return
+
+            
 
             if not quantity_text.isdigit() or int(quantity_text) <= 0:
                 QMessageBox.warning(
@@ -502,6 +514,16 @@ class MoonMartPOS(QMainWindow):
 
             if not quantity_text:
                 quantity_input.setFocus()
+                return
+
+            try:
+                int(quantity_text)
+            except ValueError:
+                QMessageBox.warning(
+                    dialog,
+                    "Input Error",
+                    "Please enter a valid positive integer for quantity.",
+                )
                 return
 
             if not quantity_text.isdigit() or int(quantity_text) <= 0:
@@ -664,6 +686,23 @@ class MoonMartPOS(QMainWindow):
                 )
                 return
 
+            try:
+                if cat_id_text:
+                    int(cat_id_text)
+                if unit_cost_text:
+                    int(unit_cost_text)
+                if retail_price_text:
+                    int(retail_price_text)
+                if reorder_level_text:
+                    int(reorder_level_text)
+            except ValueError:
+                QMessageBox.warning(
+                    dialog,
+                    "Input Error",
+                    "Please enter a valid form of number for Category ID, Unit Cost, Retail Price and Reorder Level.",
+                )
+                return
+
             if cat_id_text and (not cat_id_text.isdigit() or int(cat_id_text) <= 0):
                 QMessageBox.warning(
                     dialog,
@@ -680,11 +719,11 @@ class MoonMartPOS(QMainWindow):
                 )
                 return
 
-            if retail_price_text and (not retail_price_text.isdigit() or int(retail_price_text) < 0):
+            if retail_price_text and (not retail_price_text.isdigit() or int(retail_price_text) <= 0):
                 QMessageBox.warning(
                     dialog,
                     "Input Error",
-                    "Please enter a valid non-negative integer for retail price or leave blank.",
+                    "Please enter a valid positive integer for retail price or leave blank.",
                 )
                 return
 
