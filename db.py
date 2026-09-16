@@ -48,7 +48,7 @@ def init_db():
                 name VARCHAR(100), 
                 unit_cost INT, 
                 retail_price INT,  -- Invalid prices are normalized to NULL by the triggers below.
-                retail_price_usd DECIMAL(7, 3),  -- Positive finite numbers or NULL; see triggers below.
+                retail_price_usd DECIMAL(7, 3),  -- 0 < USD price <= 10000, or NULL; see triggers below.
                 reorder_level INT, 
                 created_at TIMESTAMP DEFAULT (datetime('now', '+7 hours')),
 
@@ -150,31 +150,35 @@ def init_db():
                 WHERE product_id = NEW.product_id;
             END;
 
-            -- USD allows fractions. The upper bound is SQLite's largest finite REAL,
-            -- so positive infinity (including overflowed numeric imports) is cleared.
-            CREATE TRIGGER IF NOT EXISTS products_usd_price_insert
+            -- Replace both definitions atomically so existing databases get the new cap.
+            -- USD allows fractions up to $10,000; invalid imports become NULL.
+            BEGIN;
+            DROP TRIGGER IF EXISTS products_usd_price_insert;
+            DROP TRIGGER IF EXISTS products_usd_price_update;
+            CREATE TRIGGER products_usd_price_insert
             AFTER INSERT ON products
             WHEN NEW.retail_price_usd IS NOT NULL
               AND (typeof(NEW.retail_price_usd) NOT IN ('integer', 'real')
                    OR NEW.retail_price_usd <= 0
-                   OR NEW.retail_price_usd > 1.7976931348623157e308)
+                   OR NEW.retail_price_usd > 10000)
             BEGIN
                 UPDATE products
                 SET retail_price_usd = NULL
                 WHERE product_id = NEW.product_id;
             END;
 
-            CREATE TRIGGER IF NOT EXISTS products_usd_price_update
+            CREATE TRIGGER products_usd_price_update
             AFTER UPDATE OF retail_price_usd ON products
             WHEN NEW.retail_price_usd IS NOT NULL
               AND (typeof(NEW.retail_price_usd) NOT IN ('integer', 'real')
                    OR NEW.retail_price_usd <= 0
-                   OR NEW.retail_price_usd > 1.7976931348623157e308)
+                   OR NEW.retail_price_usd > 10000)
             BEGIN
                 UPDATE products
                 SET retail_price_usd = NULL
                 WHERE product_id = NEW.product_id;
             END;
+            COMMIT;
         """)
 
         # DB Browser's CSV importer may bind a default expression as literal text.
@@ -365,6 +369,9 @@ def add_product(name: str, barcode: str, retail_price: int, unit_cost: int = 0) 
 
     if retail_price <= 0:
         raise ValueError("Retail Price must be a positive integer")
+
+    if price_usd > 10000:
+        raise ValueError("USD Price cannot be greater than 10000")
     
     with closing(get_db()) as conn, conn:
         try:
@@ -460,8 +467,14 @@ def edit_product(barcode: str, category_id: int = UNCHANGED, name: str = UNCHANG
         updates['unit_cost'] = unit_cost
 
     if retail_price is not UNCHANGED:
+        candidate = retail_price
+        candidate_usd = round_usd(Decimal(int(retail_price)) / 4000)
+
+        if candidate_usd > 10000:
+            raise ValueError("Retail Price should not be greater than $10,000")
+
         updates['retail_price'] = retail_price
-        updates['retail_price_usd'] = round_usd(Decimal(int(retail_price)) / 4000)
+        updates['retail_price_usd'] = candidate_usd
 
     if reorder_level is not UNCHANGED:
         updates['reorder_level'] = reorder_level
