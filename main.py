@@ -303,6 +303,13 @@ class MoonMartPOS(QMainWindow):
         except sqlite3.OperationalError as op_error:
             QMessageBox.warning(self, "Checkout Failed", str(op_error))
             return
+        except sqlite3.IntegrityError as error:
+            QMessageBox.warning(
+                self,
+                "Checkout Failed",
+                f"The sale could not be saved because it violates a database rule.\n{error}"
+            )
+            return
 
 
         # Trigger ESC/POS Thermal Print
