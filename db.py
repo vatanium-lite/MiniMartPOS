@@ -362,6 +362,10 @@ def add_product(name: str, barcode: str, retail_price: int, unit_cost: int = 0) 
             raise ValueError(f"{label} must be a non-negative whole number within the supported range.")
 
     price_usd = round_usd(Decimal(retail_price) / 4000)
+
+    if retail_price <= 0:
+        raise ValueError("Retail Price must be a positive integer")
+    
     with closing(get_db()) as conn, conn:
         try:
             cursor = conn.execute(

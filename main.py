@@ -612,6 +612,13 @@ class MoonMartPOS(QMainWindow):
 
                 unit_cost = parse_khr(unit_cost_input, "Unit cost", optional=True)
                 price = parse_khr(price_input, "Price")
+
+                if unit_cost < 0:
+                    raise ValueError("Please enter a valid non-negative integer for Unit Cost, or leave blank.")
+
+                if price <= 0:
+                    raise ValueError("Please enter a valid positive integer for Price.")
+                
                 db.add_product(name, barcode, price, unit_cost)
             except ValueError as error:
                 QMessageBox.warning(dialog, "Cannot Add Product", str(error))
