@@ -340,12 +340,12 @@ class MoonMartPOS(QMainWindow):
 
             if quantity > 1000:
                 raise OverflowError
-
+            
+            item = self.cart[row_idx]
             line_total_usd_candidate = db.calculate_usd_line_total(quantity, item['unit_price_usd']) # Validates first if the calculation is possible
 
             
             # Table rows follow the same order as the cart (sorting is disabled).
-            item = self.cart[row_idx]
             item['quantity'] = quantity
             item['line_total'] = quantity * item['unit_price']
             item['line_total_usd'] = line_total_usd_candidate
