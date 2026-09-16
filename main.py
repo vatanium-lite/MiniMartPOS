@@ -2,6 +2,10 @@
 
 import sys
 import sqlite3
+import decimal
+import db
+import printer
+
 from decimal import Decimal, DecimalException
 from tkinter import dialog
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
@@ -11,8 +15,6 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt6.QtCore import Qt, QDate, QRegularExpression
 from PyQt6.QtGui import QRegularExpressionValidator
 
-import db
-import printer
 
 def load_stylesheet(file_path): # Helper function to read the external CSS/QSS file safely.
     try:
@@ -298,8 +300,8 @@ class MoonMartPOS(QMainWindow):
         except ValueError as error:
             QMessageBox.warning(self, "Checkout Failed", str(error))
             return
-        except sqlite3.OperationalError as operror:
-            QMessageBox.warning(self, "Checkout Failed", str(operror))
+        except sqlite3.OperationalError as op_error:
+            QMessageBox.warning(self, "Checkout Failed", str(op_error))
             return
 
 
@@ -331,12 +333,15 @@ class MoonMartPOS(QMainWindow):
 
             if quantity > 1000:
                 raise OverflowError
+
+            line_total_usd_candidate = db.calculate_usd_line_total(quantity, item['unit_price_usd']) # Validates first if the calculation is possible
+
             
             # Table rows follow the same order as the cart (sorting is disabled).
             item = self.cart[row_idx]
             item['quantity'] = quantity
             item['line_total'] = quantity * item['unit_price']
-            item['line_total_usd'] = db.calculate_usd_line_total(quantity, item['unit_price_usd'])
+            item['line_total_usd'] = line_total_usd_candidate
 
             # Updates the affected cells
             self.cart_table.item(row_idx, 3).setText(
@@ -380,6 +385,22 @@ class MoonMartPOS(QMainWindow):
                 self,
                 "Invalid Quantity",
                 "Quantity should not be greater than 1000 units."
+            )
+        except (decimal.InvalidOperation):
+            # Restore the displayed quantity without triggering this handler again.
+            signals_were_blocked = self.cart_table.blockSignals(True) # Sets blockSignals to True and returns previous state (False)
+            try:
+                previous_quantity = str(self.cart[row_idx]['quantity'])
+                if quantity_item is not None:
+                    quantity_item.setText(previous_quantity)
+                else:
+                    self.cart_table.setItem(row_idx, 2, QTableWidgetItem(previous_quantity))
+            finally:
+                self.cart_table.blockSignals(signals_were_blocked) # Re-activates signals
+            QMessageBox.warning(
+                self,
+                "Invalid Unit Price",
+                f"Please validate the unit price in USD of product {self.cart[row_idx]['name']}"
             )
 
 
