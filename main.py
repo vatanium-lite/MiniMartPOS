@@ -63,7 +63,7 @@ class MoonMartPOS(QMainWindow):
         self.cart_table.setHorizontalHeaderLabels(["Product Name", "Price", "Qty", "Line Total", "Line Total USD", ""])
         self.cart_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch) # Sets the first column to stretch and fill available space
         self.cart_table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed) # Makes last column small
-        self.cart_table.setColumnWidth(5, 30)
+        self.cart_table.setColumnWidth(5, 40)
         self.cart_table.cellChanged.connect(self.handle_cell_changed) # Connects the signal (when a cell is changed) to the handle_cell_changed method
         left_panel.addWidget(self.cart_table)
 
@@ -251,9 +251,10 @@ class MoonMartPOS(QMainWindow):
             self.cart_table.setItem(row_idx, 3, QTableWidgetItem(f"{item['line_total']} KHR"))
             self.cart_table.setItem(row_idx, 4, QTableWidgetItem(f"${item['line_total_usd']:.3f}"))
 
-            btn_remove = QPushButton("✕")
-            btn_remove.setFixedSize(40, 30)
+            btn_remove = QPushButton("×")
             btn_remove.setObjectName("btn_remove")
+            btn_remove.setToolTip(f"Remove {item['name']} from cart")
+            btn_remove.setAccessibleName(f"Remove {item['name']} from cart")
 
             btn_remove.clicked.connect(
                 lambda checked, row=row_idx: self.remove_cart_item(row) # clicked emits checked(boolean) argument, we use checked to catch that

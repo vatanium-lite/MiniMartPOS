@@ -121,6 +121,15 @@ QPushButton#btn_add_product {
 
 QPushButton#btn_remove {
     color: #991220;
+    background-color: transparent;
+    border: none;
+    padding: 0;
+    font-family: Arial;
+    font-size: 22px;
+}
+
+QPushButton#btn_remove:hover {
+    background-color: #fbe5e7;
 }
 
 /* Right-panel buttons: content width plus horizontal padding and native borders.
